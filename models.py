@@ -88,6 +88,27 @@ class Review(db.Model):
         db.UniqueConstraint('user_id', 'review_date', name='uq_user_date'),
     )
 
+
+class FishImage(db.Model):
+    """摸鱼环节上传的图片"""
+    __tablename__ = 'fish_images'
+    id = db.Column(db.Integer, primary_key=True)
+    review_id = db.Column(db.Integer, db.ForeignKey('reviews.id'), nullable=False)
+    filename = db.Column(db.String(255), nullable=False)
+    caption = db.Column(db.Text)  # 可选文字说明
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    review = db.relationship('Review', backref='fish_images', lazy=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'review_id': self.review_id,
+            'filename': self.filename,
+            'caption': self.caption,
+            'created_at': self.created_at.isoformat()
+        }
+
     def get_content(self):
         if self.content:
             return json.loads(self.content)

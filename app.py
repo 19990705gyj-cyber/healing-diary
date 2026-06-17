@@ -4,7 +4,7 @@ import secrets
 from datetime import datetime, date, timedelta
 from flask import Flask, render_template, request, jsonify, redirect, url_for, abort
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from models import db, User, FormField, Review
+from models import db, User, FormField, Review, FishImage
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'healing-community-secret-key-2024')
@@ -12,6 +12,9 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'healing-community-secre
 DB_PATH = os.environ.get('DB_PATH', '/tmp/data.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_PATH}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 最大上传 16MB
+UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', '/tmp/uploads')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 db.init_app(app)
 login_manager = LoginManager(app)
@@ -74,6 +77,15 @@ DEFAULT_FIELDS = [
         'placeholder': '明天我想要……',
         'is_required': False,
         'sort_order': 6,
+    },
+    {
+        'field_key': 'fish_mode',
+        'label': '摸鱼环节',
+        'field_type': 'single_choice',
+        'options': ['🎣 今天摸了，上点图看看', '📝 今天没摸，正常复盘'],
+        'placeholder': None,
+        'is_required': False,
+        'sort_order': 7,
     },
 ]
 
@@ -515,9 +527,11 @@ def api_cancel_share(date_str):
 def api_get_share(token):
     review = Review.query.filter_by(share_token=token, is_shared=True).first_or_404()
     fields = FormField.query.filter_by(is_active=True).order_by(FormField.sort_order).all()
+    fish_images = FishImage.query.filter_by(review_id=review.id).order_by(FishImage.created_at).all()
     return jsonify({
         'review': review.to_dict(include_user=True),
-        'fields': [f.to_dict() for f in fields]
+        'fields': [f.to_dict() for f in fields],
+        'fish_images': [img.to_dict() for img in fish_images]
     })
 
 
@@ -595,6 +609,102 @@ def api_admin_toggle_user(uid):
 # 确保数据库初始化（在生产环境中通过 before_first_request 或直接调用）
 with app.app_context():
     init_db()
+
+# ─────────────────────────────────────────
+# API：摸鱼环节图片上传
+# ─────────────────────────────────────────
+@app.route('/api/reviews/today/fish-images', methods=['POST'])
+@login_required
+def api_upload_fish_images():
+    today = date.today()
+    review = Review.query.filter_by(user_id=current_user.id, review_date=today).first()
+    if not review:
+        return jsonify({'error': '请先保存复盘记录'}), 400
+
+    caption = request.form.get('caption', '').strip()
+
+    if 'image' not in request.files:
+        return jsonify({'error': '请上传图片'}), 400
+
+    file = request.files['image']
+    if file.filename == '':
+        return jsonify({'error': '请选择图片'}), 400
+
+    # 允许的图片格式
+    allowed_ext = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'}
+    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+    if ext not in allowed_ext:
+        return jsonify({'error': f'不支持的图片格式: .{ext}，支持: {", ".join(allowed_ext)}'}), 400
+
+    # 生成唯一文件名
+    import uuid
+    safe_name = f"{uuid.uuid4().hex}.{ext}"
+    save_path = os.path.join(UPLOAD_FOLDER, safe_name)
+    file.save(save_path)
+
+    fish_img = FishImage(
+        review_id=review.id,
+        filename=safe_name,
+        caption=caption if caption else None
+    )
+    db.session.add(fish_img)
+    db.session.commit()
+
+    return jsonify(fish_img.to_dict()), 201
+
+
+@app.route('/api/reviews/today/fish-images', methods=['GET'])
+@login_required
+def api_get_fish_images():
+    today = date.today()
+    review = Review.query.filter_by(user_id=current_user.id, review_date=today).first()
+    if not review:
+        return jsonify([])
+    images = FishImage.query.filter_by(review_id=review.id).order_by(FishImage.created_at).all()
+    return jsonify([img.to_dict() for img in images])
+
+
+@app.route('/api/reviews/<string:date_str>/fish-images', methods=['GET'])
+@login_required
+def api_get_fish_images_by_date(date_str):
+    try:
+        d = date.fromisoformat(date_str)
+    except ValueError:
+        return jsonify({'error': '日期格式错误'}), 400
+    review = Review.query.filter_by(user_id=current_user.id, review_date=d).first()
+    if not review:
+        return jsonify([])
+    images = FishImage.query.filter_by(review_id=review.id).order_by(FishImage.created_at).all()
+    return jsonify([img.to_dict() for img in images])
+
+
+@app.route('/api/fish-images/<string:filename>')
+def api_serve_fish_image(filename):
+    """提供图片访问（需要安全校验文件名）"""
+    safe_name = os.path.basename(filename)
+    path = os.path.join(UPLOAD_FOLDER, safe_name)
+    if not os.path.exists(path):
+        abort(404)
+    from flask import send_file
+    return send_file(path)
+
+
+@app.route('/api/reviews/today/fish-images/<int:img_id>', methods=['DELETE'])
+@login_required
+def api_delete_fish_image(img_id):
+    today = date.today()
+    review = Review.query.filter_by(user_id=current_user.id, review_date=today).first()
+    if not review:
+        return jsonify({'error': '无今日复盘'}), 400
+    img = FishImage.query.filter_by(id=img_id, review_id=review.id).first_or_404()
+    # 删除文件
+    path = os.path.join(UPLOAD_FOLDER, img.filename)
+    if os.path.exists(path):
+        os.remove(path)
+    db.session.delete(img)
+    db.session.commit()
+    return jsonify({'success': True})
+
 
 if __name__ == '__main__':
     print("🌿 疗愈社群复盘系统已启动")

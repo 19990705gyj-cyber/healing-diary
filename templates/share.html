@@ -218,7 +218,7 @@ async function init() {
 }
 
 function renderShare(data) {
-  const { review, fields } = data;
+  const { review, fields, fish_images } = data;
   const d = new Date(review.review_date + 'T00:00:00');
   const dateStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（周${WEEKDAYS[d.getDay()]}）`;
   const username = review.username || '匿名';
@@ -265,6 +265,26 @@ function renderShare(data) {
         <div class="footer-cta">✍️ 想要记录自己的疗愈日记？<a href="/login">来加入我们</a></div>
       </div>
     </div>`;
+
+  // 摸鱼环节：加载图片
+  const isFishMode = review.content['fish_mode'] && review.content['fish_mode'].includes('🎣');
+  if (isFishMode && fish_images && fish_images.length) {
+    const cardBody = document.getElementById('cardBody');
+    let imgsHTML = '<div class="field-block"><div class="field-label">🎣 摸鱼图片</div><div style="display:flex;flex-wrap:wrap;gap:8px">';
+    fish_images.forEach(img => {
+      imgsHTML += `<div style="border-radius:8px;overflow:hidden;border:1px solid #F0E6DF;max-width:200px">
+        <img src="/api/fish-images/${img.filename}" style="width:100%;display:block" loading="lazy">
+        ${img.caption ? `<div style="padding:6px 10px;font-size:.75rem;color:#9B8579">${escHtml(img.caption)}</div>` : ''}
+      </div>`;
+    });
+    imgsHTML += '</div></div>';
+    cardBody.innerHTML += imgsHTML;
+  }
+}
+
+async function loadShareFishImages(review) {
+  // 已合并到 renderShare 中处理
+}
 }
 
 function copyCurrentUrl() {

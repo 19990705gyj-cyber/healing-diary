@@ -49,6 +49,92 @@
   }
   .field-label .req { color: var(--primary-dark); font-size: 0.8rem; }
 
+  /* ── 摸鱼环节图片上传区域 ── */
+  .fish-section {
+    background: linear-gradient(135deg, #E8F5EE, #E3F2FD);
+    border: 2px dashed #B7E1CD;
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-bottom: 16px;
+    text-align: center;
+    transition: all 0.3s;
+  }
+  .fish-section.drag-over {
+    border-color: var(--primary);
+    background: linear-gradient(135deg, #FFF0ED, #FFE8E4);
+  }
+  .fish-upload-zone {
+    cursor: pointer;
+    padding: 20px;
+  }
+  .fish-upload-zone .icon { font-size: 3rem; margin-bottom: 10px; }
+  .fish-upload-zone .hint { font-size: 0.88rem; color: var(--text-secondary); }
+  .fish-upload-zone .hint strong { color: var(--primary-dark); }
+  .fish-image-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-top: 16px; }
+  .fish-image-item {
+    position: relative;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 2px solid var(--border);
+    transition: all 0.2s;
+    background: white;
+  }
+  .fish-image-item:hover { border-color: var(--primary); box-shadow: var(--shadow); }
+  .fish-image-item img {
+    width: 100%; height: 140px;
+    object-fit: cover;
+    display: block;
+  }
+  .fish-image-item .del-btn {
+    position: absolute;
+    top: 6px; right: 6px;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.5);
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .fish-image-item .del-btn:hover { background: #E07A5F; }
+  .fish-image-item .img-caption {
+    padding: 8px 10px;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .fish-caption-input {
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.88rem;
+    background: white;
+    color: var(--text-primary);
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .fish-caption-input:focus { border-color: var(--primary); }
+  .fish-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #FFF0ED;
+    color: var(--primary-dark);
+    padding: 4px 10px;
+    border-radius: 50px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    margin-top: 8px;
+  }
+  .field-card.hidden-by-fish { display: none; }
+
   /* 底部操作栏 */
   .action-bar {
     background: white;
@@ -248,6 +334,10 @@ async function init() {
       apiFetch('/api/reviews/today')
     ]);
     renderForm();
+    // 初始化完成后检查摸鱼模式状态
+    if (formValues['fish_mode'] && formValues['fish_mode'].includes('🎣')) {
+      toggleFishMode();
+    }
   } catch(e) {
     document.getElementById('formArea').innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><p>加载失败，请刷新重试</p></div>`;
   }
@@ -417,6 +507,127 @@ function selectChoice(el) {
     formValues[key] = el.dataset.val;
   }
   markDirty();
+
+  // 摸鱼环节联动：选了「今天摸了」就显示摸鱼区域，隐藏其他字段
+  if (key === 'fish_mode') {
+    toggleFishMode();
+  }
+}
+
+function toggleFishMode() {
+  const fishVal = formValues['fish_mode'];
+  const isFishMode = fishVal && fishVal.includes('🎣');
+
+  // 显示/隐藏摸鱼上传区域
+  const fishArea = document.getElementById('fishUploadArea');
+  if (isFishMode) {
+    if (!fishArea) {
+      const areaHTML = `
+        <div class="fish-section" id="fishUploadArea">
+          <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px">
+            <span style="font-size:1.5rem">🎣</span>
+            <span style="font-weight:700;color:var(--text-primary)">摸鱼晒图</span>
+            <span style="font-size:.78rem;color:var(--text-secondary)">| 上传今天的摸鱼证据吧</span>
+          </div>
+          <div class="fish-upload-zone" id="fishDropZone">
+            <div class="icon">📸</div>
+            <div class="hint">点击或拖拽上传图片 <strong>(必传)</strong></div>
+            <div class="hint" style="font-size:.76rem;margin-top:4px">支持 PNG / JPG / GIF / WebP</div>
+          </div>
+          <input type="file" id="fishFileInput" accept="image/*" style="display:none" multiple>
+          <input type="text" class="fish-caption-input" id="fishCaptionInput" placeholder="（选填）给这张图配一句话吧…">
+          <div class="fish-image-list" id="fishImageList"></div>
+          <div class="fish-badge" id="fishRequiredBadge" style="display:none">
+            ⚠️ 请至少上传一张图片
+          </div>
+        </div>`;
+      // 插入到 fish_mode 字段卡片后面
+      const fishCard = document.getElementById('field-card-fish_mode');
+      fishCard.insertAdjacentHTML('afterend', areaHTML);
+      bindFishUploadEvents();
+      loadFishImages();
+    } else {
+      fishArea.style.display = 'block';
+    }
+
+    // 隐藏其他字段卡片（除了摸鱼环节自己）
+    document.querySelectorAll('.field-card').forEach(card => {
+      if (card.id !== 'field-card-fish_mode' && !card.classList.contains('fish-section')) {
+        card.classList.add('hidden-by-fish');
+      }
+    });
+  } else {
+    // 显示其他字段
+    document.querySelectorAll('.field-card.hidden-by-fish').forEach(card => {
+      card.classList.remove('hidden-by-fish');
+    });
+    // 隐藏摸鱼区域
+    if (fishArea) fishArea.style.display = 'none';
+  }
+}
+
+function bindFishUploadEvents() {
+  const dropZone = document.getElementById('fishDropZone');
+  const fileInput = document.getElementById('fishFileInput');
+  if (!dropZone || !fileInput) return;
+
+  dropZone.addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.parentElement.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => { dropZone.parentElement.classList.remove('drag-over'); });
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.parentElement.classList.remove('drag-over');
+    handleFishFiles(e.dataTransfer.files);
+  });
+  fileInput.addEventListener('change', () => handleFishFiles(fileInput.files));
+}
+
+async function handleFishFiles(files) {
+  const caption = document.getElementById('fishCaptionInput')?.value || '';
+  for (const file of files) {
+    const formData = new FormData();
+    formData.append('image', file);
+    formData.append('caption', caption);
+    try {
+      await fetch('/api/reviews/today/fish-images', { method: 'POST', body: formData });
+    } catch(e) {
+      showToast('上传失败: ' + e.message, 'error');
+    }
+  }
+  loadFishImages();
+}
+
+async function loadFishImages() {
+  const list = document.getElementById('fishImageList');
+  const badge = document.getElementById('fishRequiredBadge');
+  if (!list) return;
+  try {
+    const images = await apiFetch('/api/reviews/today/fish-images');
+    if (images.length === 0) {
+      list.innerHTML = '';
+      if (badge) badge.style.display = 'block';
+    } else {
+      if (badge) badge.style.display = 'none';
+      list.innerHTML = images.map(img => `
+        <div class="fish-image-item">
+          <img src="/api/fish-images/${img.filename}" alt="摸鱼图" loading="lazy">
+          <button class="del-btn" onclick="deleteFishImage(${img.id})">×</button>
+          ${img.caption ? `<div class="img-caption">${escHtml(img.caption)}</div>` : ''}
+        </div>
+      `).join('');
+    }
+  } catch(e) {
+    console.error('加载图片失败', e);
+  }
+}
+
+async function deleteFishImage(id) {
+  try {
+    await apiFetch(`/api/reviews/today/fish-images/${id}`, { method: 'DELETE' });
+    loadFishImages();
+  } catch(e) {
+    showToast('删除失败', 'error');
+  }
 }
 
 function updateTextValue(el) {
@@ -430,9 +641,28 @@ function markDirty() {
 }
 
 async function saveReview() {
-  // 检查必填
-  const missing = fields.filter(f => f.is_required && !formValues[f.field_key]);
-  if (missing.length) {
+  // 摸鱼模式下：必须有图片
+  const isFishMode = formValues['fish_mode'] && formValues['fish_mode'].includes('🎣');
+  if (isFishMode) {
+    try {
+      const images = await apiFetch('/api/reviews/today/fish-images');
+      if (images.length === 0) {
+        showToast('摸鱼环节请至少上传一张图片 📸', 'error');
+        return;
+      }
+    } catch(e) {
+      showToast('请先上传图片', 'error');
+      return;
+    }
+  }
+
+  // 检查必填（摸鱼模式下跳过非摸鱼字段的必填检查）
+  const missing = fields.filter(f => {
+    if (f.field_key === 'fish_mode') return false;
+    if (isFishMode && f.field_key !== 'fish_mode') return false; // 摸鱼模式跳过其他必填
+    return f.is_required && !formValues[f.field_key];
+  });
+  if (!isFishMode && missing.length) {
     showToast(`请填写必填项：${missing.map(f=>f.label).join('、')}`, 'error');
     return;
   }

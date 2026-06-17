@@ -378,6 +378,12 @@ async function openDetail(dateStr) {
         </div>`;
     });
 
+    // 摸鱼环节：加载图片
+    const isFishMode = content['fish_mode'] && content['fish_mode'].includes('🎣');
+    if (isFishMode) {
+      html += `<div class="detail-field"><div class="detail-field-label">🎣 摸鱼图片</div><div id="fishImagesContainer" style="display:flex;flex-wrap:wrap;gap:8px"><div class="loading"><div class="spinner"></div></div></div></div>`;
+    }
+
     html += `
       <div class="detail-share-bar">
         <button class="btn btn-primary btn-sm" onclick="shareDetailImage()">🖼️ 导出图片</button>
@@ -392,6 +398,11 @@ async function openDetail(dateStr) {
     // 存储当前查看的review
     window._currentDetailReview = review;
     window._currentDetailDate = dateStr;
+
+    // 摸鱼模式加载图片
+    if (isFishMode) {
+      loadFishImagesForDetail(dateStr);
+    }
   } catch(e) {
     showToast('加载失败', 'error');
   }
@@ -448,6 +459,26 @@ async function createShare(dateStr) {
 function copyExistingLink(token) {
   const url = location.origin + '/share/' + token;
   navigator.clipboard.writeText(url).then(() => showToast('分享链接已复制 🔗', 'success'));
+}
+
+async function loadFishImagesForDetail(dateStr) {
+  const container = document.getElementById('fishImagesContainer');
+  if (!container) return;
+  try {
+    const images = await apiFetch(`/api/reviews/${dateStr}/fish-images`);
+    if (!images.length) {
+      container.innerHTML = '<span style="color:var(--text-secondary);font-size:.85rem">暂无图片</span>';
+      return;
+    }
+    container.innerHTML = images.map(img => `
+      <div style="border-radius:8px;overflow:hidden;border:1px solid var(--border);max-width:200px">
+        <img src="/api/fish-images/${img.filename}" alt="摸鱼图" style="width:100%;display:block" loading="lazy">
+        ${img.caption ? `<div style="padding:6px 10px;font-size:.75rem;color:var(--text-secondary)">${escHtml(img.caption)}</div>` : ''}
+      </div>
+    `).join('');
+  } catch(e) {
+    container.innerHTML = '<span style="color:var(--text-secondary);font-size:.85rem">加载失败</span>';
+  }
 }
 
 function escHtml(str) {
