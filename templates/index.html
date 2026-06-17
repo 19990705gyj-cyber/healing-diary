@@ -586,25 +586,54 @@ function bindFishUploadEvents() {
 }
 
 async function handleFishFiles(files) {
+  if (!files || files.length === 0) return;
   const caption = document.getElementById('fishCaptionInput')?.value || '';
+  const dropZone = document.getElementById('fishDropZone');
+  let successCount = 0;
+
+  // 显示上传中状态
+  if (dropZone) {
+    dropZone.style.opacity = '0.6';
+    dropZone.querySelector('.icon').textContent = '⏳';
+    dropZone.querySelector('.hint').innerHTML = '上传中…';
+  }
+
   for (const file of files) {
     const formData = new FormData();
     formData.append('image', file);
     formData.append('caption', caption);
     try {
       const res = await fetch('/api/reviews/today/fish-images', { method: 'POST', body: formData });
-      if (!res.ok) {
+      if (res.ok) {
+        successCount++;
+      } else {
         const err = await res.json().catch(() => ({}));
-        showToast(err.error || '上传失败', 'error');
+        showToast(err.error || `「${file.name}」上传失败`, 'error');
       }
     } catch(e) {
-      showToast('上传失败: ' + e.message, 'error');
+      showToast('网络错误: ' + e.message, 'error');
     }
   }
-  // 清空 file input，允许重复选择同一文件
+
+  // 恢复上传区域状态
+  if (dropZone) {
+    dropZone.style.opacity = '1';
+    dropZone.querySelector('.icon').textContent = '📸';
+    dropZone.querySelector('.hint').innerHTML = '点击或拖拽上传图片 <strong>(必传)</strong>';
+  }
+
+  // 清空 file input
   const fileInput = document.getElementById('fishFileInput');
   if (fileInput) fileInput.value = '';
-  loadFishImages();
+
+  // 清空 caption
+  const captionInput = document.getElementById('fishCaptionInput');
+  if (captionInput) captionInput.value = '';
+
+  if (successCount > 0) {
+    showToast(`已上传 ${successCount} 张图片 ✅`);
+    await loadFishImages();
+  }
 }
 
 async function loadFishImages() {

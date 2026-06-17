@@ -415,9 +415,14 @@ function showToast(msg, type='') {
 }
 
 async function apiFetch(url, options={}) {
+  const headers = options.headers || {};
+  // 只在有 body 的请求中设置 Content-Type（避免 GET/HEAD 等无 body 请求发出不必要的 header）
+  if (options.body && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
   const res = await fetch(url, {
-    headers: {'Content-Type': 'application/json'},
-    ...options
+    ...options,
+    headers
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
