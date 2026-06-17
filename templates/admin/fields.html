@@ -1,0 +1,426 @@
+{% extends "base.html" %}
+{% block title %}字段配置 · 疗愈日记本{% endblock %}
+
+{% block extra_css %}
+<style>
+  .field-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+  .field-row {
+    background: white;
+    border-radius: var(--radius-sm);
+    padding: 16px 20px;
+    border: 1.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: box-shadow 0.2s;
+  }
+  .field-row:hover { box-shadow: var(--shadow); }
+  .field-row.inactive { opacity: 0.55; }
+  .drag-handle {
+    cursor: grab;
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    padding: 4px;
+    user-select: none;
+  }
+  .drag-handle:active { cursor: grabbing; }
+  .field-info { flex: 1; }
+  .field-name { font-weight: 700; color: var(--text-primary); font-size: 0.92rem; }
+  .field-meta { font-size: 0.76rem; color: var(--text-secondary); margin-top: 3px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .field-actions { display: flex; gap: 6px; }
+
+  /* 类型标签 */
+  .type-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 50px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    background: var(--bg-warm);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+
+  /* 弹窗 */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    padding: 20px;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: auto; }
+  .modal {
+    background: white;
+    border-radius: var(--radius);
+    padding: 32px;
+    max-width: 500px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    transform: scale(0.95);
+    transition: transform 0.2s;
+  }
+  .modal-overlay.open .modal { transform: scale(1); }
+  .modal-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 24px; color: var(--text-primary); }
+
+  /* 选项编辑 */
+  .options-editor { margin-top: 10px; }
+  .option-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .option-row input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.86rem;
+    background: var(--bg-warm);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .option-row input:focus { border-color: var(--primary); background: white; }
+  .option-del {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: white;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    transition: all 0.15s;
+  }
+  .option-del:hover { background: #FFF0EE; color: #C0392B; border-color: #FFCCC5; }
+
+  /* 字段类型图标 */
+  .type-icons { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .type-icon-item {
+    padding: 6px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.82rem;
+    transition: all 0.15s;
+    background: var(--bg-warm);
+  }
+  .type-icon-item:hover { border-color: var(--primary); }
+  .type-icon-item.active { border-color: var(--primary); background: #FFF0ED; color: var(--primary-dark); font-weight: 700; }
+
+  .form-group { margin-bottom: 18px; }
+  label { display: block; font-size: 0.86rem; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+  input, select, textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.88rem;
+    background: var(--bg-warm);
+    color: var(--text-primary);
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--primary); background: white; }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .checkbox-row input[type="checkbox"] { width: auto; cursor: pointer; accent-color: var(--primary); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <div>
+      <h1>📋 复盘字段配置</h1>
+      <p>设计成员的每日复盘框架</p>
+    </div>
+    <div style="display:flex;gap:10px">
+      <a href="/admin" class="btn btn-ghost btn-sm">← 返回后台</a>
+      <button class="btn btn-primary" onclick="openAddModal()">+ 添加字段</button>
+    </div>
+  </div>
+
+  <div class="card" style="padding:16px 20px;margin-bottom:12px;font-size:.84rem;color:var(--text-secondary);display:flex;align-items:center;gap:8px">
+    <span>💡</span>
+    <span>拖拽左侧 <strong>⠿</strong> 图标可调整字段顺序；关闭字段不会删除已填写的数据</span>
+  </div>
+
+  <div id="fieldList" class="field-list">
+    <div class="loading"><div class="spinner"></div> 加载字段…</div>
+  </div>
+</div>
+
+<!-- 添加/编辑弹窗 -->
+<div class="modal-overlay" id="fieldModal" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title" id="modalTitle">添加复盘字段</div>
+
+    <div class="form-group">
+      <label>字段名称 <span style="color:var(--primary-dark)">*</span></label>
+      <input type="text" id="fieldLabel" placeholder="例如：今日感恩、情绪状态…">
+    </div>
+
+    <div class="form-group">
+      <label>字段 Key（英文，唯一标识）</label>
+      <input type="text" id="fieldKey" placeholder="例如：today_gratitude" style="font-family:monospace">
+      <div style="font-size:.75rem;color:var(--text-secondary);margin-top:4px">仅支持字母、数字和下划线；编辑时不可修改</div>
+    </div>
+
+    <div class="form-group">
+      <label>字段类型 <span style="color:var(--primary-dark)">*</span></label>
+      <div class="type-icons" id="typeIcons">
+        <div class="type-icon-item active" data-type="text" onclick="selectType(this)">✏️ 单行文本</div>
+        <div class="type-icon-item" data-type="textarea" onclick="selectType(this)">📝 多行文本</div>
+        <div class="type-icon-item" data-type="mood_picker" onclick="selectType(this)">💛 情绪选择</div>
+        <div class="type-icon-item" data-type="rating" onclick="selectType(this)">⭐ 1-10评分</div>
+        <div class="type-icon-item" data-type="single_choice" onclick="selectType(this)">🔘 单选</div>
+        <div class="type-icon-item" data-type="multi_choice" onclick="selectType(this)">☑️ 多选</div>
+        <div class="type-icon-item" data-type="slider" onclick="selectType(this)">🎚️ 滑块</div>
+      </div>
+    </div>
+
+    <div class="form-group" id="optionsGroup" style="display:none">
+      <label>选项内容</label>
+      <div class="options-editor" id="optionsList"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addOption()" style="margin-top:8px">+ 添加选项</button>
+    </div>
+
+    <div class="form-group">
+      <label>占位提示文字</label>
+      <input type="text" id="fieldPlaceholder" placeholder="选填，引导用户填写">
+    </div>
+
+    <div class="form-group">
+      <label class="checkbox-row">
+        <input type="checkbox" id="fieldRequired"> 必填字段
+      </label>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+      <button class="btn btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveField()" id="saveFieldBtn">保存字段</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+let editingFieldId = null;
+let currentType = 'text';
+
+const TYPE_NAMES = {
+  text: '单行文本', textarea: '多行文本', mood_picker: '情绪选择',
+  rating: '1-10评分', single_choice: '单选', multi_choice: '多选', slider: '滑块'
+};
+
+async function loadFields() {
+  try {
+    const fields = await apiFetch('/api/admin/fields');
+    renderFields(fields);
+  } catch(e) {
+    showToast('加载失败', 'error');
+  }
+}
+
+function renderFields(fields) {
+  if (!fields.length) {
+    document.getElementById('fieldList').innerHTML = '<div class="empty-state"><div class="icon">📋</div><p>还没有字段，添加第一个吧</p></div>';
+    return;
+  }
+
+  let html = '';
+  fields.forEach(f => {
+    html += `
+      <div class="field-row ${f.is_active ? '' : 'inactive'}" data-id="${f.id}">
+        <div class="drag-handle">⠿</div>
+        <div class="field-info">
+          <div class="field-name">${escHtml(f.label)}</div>
+          <div class="field-meta">
+            <span class="type-badge">${TYPE_NAMES[f.field_type] || f.field_type}</span>
+            <span style="font-family:monospace;font-size:.72rem">${f.field_key}</span>
+            ${f.is_required ? '<span style="color:var(--primary-dark)">必填</span>' : ''}
+            ${!f.is_active ? '<span style="color:#E07A5F">已关闭</span>' : ''}
+          </div>
+        </div>
+        <div class="field-actions">
+          <button class="btn btn-ghost btn-sm" onclick="editField(${f.id})">编辑</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleFieldActive(${f.id}, ${f.is_active})" style="padding:6px 8px">
+            ${f.is_active ? '🟢' : '⚫'}
+          </button>
+          <button class="btn btn-ghost btn-sm" onclick="deleteField(${f.id})" style="padding:6px 8px">🗑️</button>
+        </div>
+      </div>`;
+  });
+
+  document.getElementById('fieldList').innerHTML = html;
+
+  // 拖拽排序
+  const el = document.getElementById('fieldList');
+  Sortable.create(el, {
+    handle: '.drag-handle',
+    animation: 150,
+    onEnd: async () => {
+      const items = [...el.querySelectorAll('.field-row')].map((row, i) => ({
+        id: parseInt(row.dataset.id),
+        sort_order: i + 1
+      }));
+      await apiFetch('/api/admin/fields/reorder', {method:'PUT', body:JSON.stringify(items)});
+      showToast('排序已保存', 'success');
+    }
+  });
+}
+
+function openAddModal() {
+  editingFieldId = null;
+  document.getElementById('modalTitle').textContent = '添加复盘字段';
+  document.getElementById('fieldLabel').value = '';
+  document.getElementById('fieldKey').value = '';
+  document.getElementById('fieldKey').disabled = false;
+  document.getElementById('fieldPlaceholder').value = '';
+  document.getElementById('fieldRequired').checked = false;
+  selectType(document.querySelector('.type-icon-item[data-type="text"]'));
+  document.getElementById('optionsList').innerHTML = '';
+  document.getElementById('fieldModal').classList.add('open');
+}
+
+async function editField(id) {
+  const fields = await apiFetch('/api/admin/fields');
+  const f = fields.find(x => x.id === id);
+  if (!f) return;
+
+  editingFieldId = id;
+  document.getElementById('modalTitle').textContent = '编辑字段';
+  document.getElementById('fieldLabel').value = f.label;
+  document.getElementById('fieldKey').value = f.field_key;
+  document.getElementById('fieldKey').disabled = true;
+  document.getElementById('fieldPlaceholder').value = f.placeholder || '';
+  document.getElementById('fieldRequired').checked = f.is_required;
+
+  // 选类型
+  const typeBtn = document.querySelector(`.type-icon-item[data-type="${f.field_type}"]`);
+  if (typeBtn) selectType(typeBtn);
+
+  // 选项
+  document.getElementById('optionsList').innerHTML = '';
+  (f.options || []).forEach(opt => addOption(opt));
+
+  document.getElementById('fieldModal').classList.add('open');
+}
+
+function selectType(el) {
+  document.querySelectorAll('.type-icon-item').forEach(e => e.classList.remove('active'));
+  el.classList.add('active');
+  currentType = el.dataset.type;
+  
+  const needsOptions = ['mood_picker', 'single_choice', 'multi_choice'].includes(currentType);
+  document.getElementById('optionsGroup').style.display = needsOptions ? 'block' : 'none';
+
+  // 预填情绪选项
+  if (currentType === 'mood_picker' && !document.getElementById('optionsList').children.length) {
+    ['😊 开心', '😌 平静', '😔 有点低落', '😰 焦虑', '😍 很棒', '🥺 感动'].forEach(opt => addOption(opt));
+  }
+}
+
+function addOption(val = '') {
+  const row = document.createElement('div');
+  row.className = 'option-row';
+  row.innerHTML = `<input type="text" placeholder="输入选项内容" value="${escHtml(val)}"><button class="option-del" onclick="this.parentNode.remove()">×</button>`;
+  document.getElementById('optionsList').appendChild(row);
+}
+
+async function saveField() {
+  const label = document.getElementById('fieldLabel').value.trim();
+  const key = document.getElementById('fieldKey').value.trim();
+  const placeholder = document.getElementById('fieldPlaceholder').value.trim();
+  const is_required = document.getElementById('fieldRequired').checked;
+
+  if (!label) return showToast('请输入字段名称', 'error');
+  if (!editingFieldId && !key) return showToast('请输入字段Key', 'error');
+
+  const needsOptions = ['mood_picker', 'single_choice', 'multi_choice'].includes(currentType);
+  const options = needsOptions
+    ? [...document.querySelectorAll('#optionsList .option-row input')].map(i => i.value.trim()).filter(Boolean)
+    : [];
+
+  const payload = {
+    label,
+    field_type: currentType,
+    options,
+    placeholder,
+    is_required,
+    ...(editingFieldId ? {} : { field_key: key })
+  };
+
+  const btn = document.getElementById('saveFieldBtn');
+  btn.disabled = true;
+
+  try {
+    if (editingFieldId) {
+      await apiFetch(`/api/admin/fields/${editingFieldId}`, {method:'PUT', body:JSON.stringify(payload)});
+      showToast('字段已更新 ✓', 'success');
+    } else {
+      await apiFetch('/api/admin/fields', {method:'POST', body:JSON.stringify(payload)});
+      showToast('字段已添加 ✓', 'success');
+    }
+    closeModal();
+    loadFields();
+  } catch(e) {
+    showToast(e.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function toggleFieldActive(id, isActive) {
+  await apiFetch(`/api/admin/fields/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({is_active: !isActive})
+  });
+  showToast(isActive ? '字段已关闭' : '字段已启用', 'success');
+  loadFields();
+}
+
+async function deleteField(id) {
+  if (!confirm('确认删除此字段？已填写的数据中该字段数据也将不再显示。')) return;
+  try {
+    await apiFetch(`/api/admin/fields/${id}`, {method:'DELETE'});
+    showToast('字段已删除', 'success');
+    loadFields();
+  } catch(e) {
+    showToast(e.message, 'error');
+  }
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('fieldModal')) {
+    document.getElementById('fieldModal').classList.remove('open');
+  }
+}
+
+// 自动生成 key
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('fieldLabel')?.addEventListener('input', function() {
+    if (!editingFieldId && !document.getElementById('fieldKey').value) {
+      // 只在手动未填时自动生成（简单英文key建议）
+    }
+  });
+});
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+loadFields();
+</script>
+{% endblock %}

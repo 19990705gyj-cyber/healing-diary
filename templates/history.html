@@ -1,0 +1,460 @@
+{% extends "base.html" %}
+{% block title %}历史记录 · 疗愈日记本{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* 月份导航 */
+  .month-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+  .month-nav-btn {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    background: white;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    color: var(--text-secondary);
+  }
+  .month-nav-btn:hover { border-color: var(--primary); color: var(--primary-dark); }
+  .month-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    min-width: 120px;
+    text-align: center;
+  }
+
+  /* 日历 */
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 28px;
+  }
+  .cal-header {
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    padding: 6px 0;
+  }
+  .cal-day {
+    aspect-ratio: 1;
+    border-radius: var(--radius-sm);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+    border: 1.5px solid transparent;
+  }
+  .cal-day.empty { cursor: default; }
+  .cal-day.has-review {
+    background: linear-gradient(135deg, #FFF0ED, #FFE8E4);
+    border-color: var(--primary);
+    font-weight: 700;
+    color: var(--primary-dark);
+  }
+  .cal-day.has-review:hover {
+    background: var(--primary);
+    color: white;
+    transform: scale(1.05);
+  }
+  .cal-day.today {
+    border-color: var(--accent);
+    font-weight: 700;
+  }
+  .cal-day.selected {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+  }
+  .cal-day .dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--primary-dark);
+    position: absolute;
+    bottom: 4px;
+  }
+
+  /* 列表 */
+  .review-list { display: flex; flex-direction: column; gap: 12px; }
+  .review-item {
+    background: white;
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .review-item:hover { box-shadow: var(--shadow-hover); border-color: var(--primary); }
+  .review-date-badge {
+    text-align: center;
+    min-width: 52px;
+  }
+  .review-date-badge .day { font-size: 1.6rem; font-weight: 700; color: var(--primary-dark); line-height: 1; }
+  .review-date-badge .month { font-size: 0.72rem; color: var(--text-secondary); }
+  .review-date-badge .weekday { font-size: 0.72rem; color: var(--text-secondary); }
+  .review-content { flex: 1; }
+  .review-mood { font-size: 1.1rem; margin-bottom: 6px; }
+  .review-snippet {
+    font-size: 0.86rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .review-tags { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+
+  /* 详情面板 */
+  .detail-panel {
+    position: fixed;
+    right: 0; top: 64px; bottom: 0;
+    width: 400px;
+    background: white;
+    border-left: 1px solid var(--border);
+    overflow-y: auto;
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 80;
+    padding: 28px 24px;
+  }
+  .detail-panel.open { transform: translateX(0); }
+  .detail-close {
+    position: absolute;
+    top: 16px; right: 16px;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    background: white;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+  }
+  .detail-close:hover { background: var(--bg-warm); }
+  .detail-date {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+  .detail-weekday { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 24px; }
+  .detail-field { margin-bottom: 20px; }
+  .detail-field-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+  }
+  .detail-field-value {
+    font-size: 0.92rem;
+    color: var(--text-primary);
+    line-height: 1.7;
+    white-space: pre-wrap;
+  }
+  .detail-share-bar {
+    display: flex;
+    gap: 8px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width:860px">
+  <div class="page-header">
+    <h1>📖 历史记录</h1>
+    <p>回顾你走过的每一天</p>
+  </div>
+
+  <!-- 月份导航 -->
+  <div class="card" style="padding: 20px 24px">
+    <div class="month-nav">
+      <button class="month-nav-btn" onclick="changeMonth(-1)">‹</button>
+      <div class="month-title" id="monthTitle"></div>
+      <button class="month-nav-btn" onclick="changeMonth(1)">›</button>
+    </div>
+
+    <!-- 日历 -->
+    <div class="calendar-grid" id="calGrid">
+      <div class="cal-header">一</div>
+      <div class="cal-header">二</div>
+      <div class="cal-header">三</div>
+      <div class="cal-header">四</div>
+      <div class="cal-header">五</div>
+      <div class="cal-header">六</div>
+      <div class="cal-header">日</div>
+    </div>
+
+    <!-- 统计 -->
+    <div id="monthStats" style="display:flex;gap:20px;padding-top:12px;border-top:1px solid var(--border);font-size:.85rem;color:var(--text-secondary)">
+    </div>
+  </div>
+
+  <!-- 记录列表 -->
+  <div id="reviewList">
+    <div class="loading"><div class="spinner"></div> 加载记录中…</div>
+  </div>
+</div>
+
+<!-- 详情侧边栏 -->
+<div class="detail-panel" id="detailPanel">
+  <button class="detail-close" onclick="closeDetail()">×</button>
+  <div id="detailContent"></div>
+</div>
+<div id="overlay" style="display:none;position:fixed;inset:0;z-index:79;background:rgba(0,0,0,.2)" onclick="closeDetail()"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+let currentYear, currentMonth;
+let reviewedDates = new Set();
+let allReviews = [];
+let fields = [];
+const WEEKDAYS = ['日','一','二','三','四','五','六'];
+const MONTHS = ['一','二','三','四','五','六','七','八','九','十','十一','十二'];
+
+async function init() {
+  const now = new Date();
+  currentYear = now.getFullYear();
+  currentMonth = now.getMonth() + 1;
+  
+  fields = await apiFetch('/api/fields').catch(() => []);
+  await loadMonth();
+}
+
+async function loadMonth() {
+  document.getElementById('monthTitle').textContent = `${currentYear}年${MONTHS[currentMonth-1]}月`;
+  
+  try {
+    const data = await apiFetch(`/api/reviews/history?year=${currentYear}&month=${currentMonth}&per_page=100`);
+    allReviews = data.items;
+    reviewedDates = new Set(allReviews.map(r => r.review_date));
+    renderCalendar();
+    renderList();
+  } catch(e) {
+    showToast('加载失败', 'error');
+  }
+}
+
+function renderCalendar() {
+  const grid = document.getElementById('calGrid');
+  // 清除旧格子（保留周几标题7个）
+  while (grid.children.length > 7) grid.removeChild(grid.lastChild);
+
+  const today = new Date().toISOString().split('T')[0];
+  const firstDay = new Date(currentYear, currentMonth - 1, 1).getDay(); // 0=周日
+  const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+  
+  // 周一开始：firstDay=0(周日)->6, 1(周一)->0, 2->1...
+  const startOffset = firstDay === 0 ? 6 : firstDay - 1;
+
+  // 填充空格
+  for (let i = 0; i < startOffset; i++) {
+    const el = document.createElement('div');
+    el.className = 'cal-day empty';
+    grid.appendChild(el);
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${currentYear}-${String(currentMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const el = document.createElement('div');
+    el.className = 'cal-day';
+    el.textContent = d;
+    if (reviewedDates.has(dateStr)) {
+      el.classList.add('has-review');
+      const dot = document.createElement('div');
+      dot.className = 'dot';
+      el.appendChild(dot);
+      el.onclick = () => openDetail(dateStr);
+    }
+    if (dateStr === today) el.classList.add('today');
+    grid.appendChild(el);
+  }
+
+  // 统计
+  const totalDays = daysInMonth;
+  const checked = allReviews.length;
+  document.getElementById('monthStats').innerHTML = `
+    <span>📅 本月已打卡 <strong style="color:var(--primary-dark)">${checked}</strong> 天</span>
+    <span>📊 打卡率 <strong style="color:var(--primary-dark)">${Math.round(checked/totalDays*100)}%</strong></span>
+  `;
+}
+
+function renderList() {
+  const container = document.getElementById('reviewList');
+  if (!allReviews.length) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">🌱</div><p>本月还没有复盘记录</p><a href="/" class="btn btn-primary">去写今日复盘</a></div>`;
+    return;
+  }
+
+  let html = '<div class="review-list">';
+  allReviews.forEach(r => {
+    const d = new Date(r.review_date + 'T00:00:00');
+    const day = d.getDate();
+    const month = d.getMonth() + 1;
+    const wd = WEEKDAYS[d.getDay()];
+    const content = r.content;
+
+    // 找情绪字段
+    const moodField = fields.find(f => f.field_type === 'mood_picker');
+    const moodVal = moodField ? content[moodField.field_key] : null;
+    
+    // 找第一个非空文本内容作摘要
+    let snippet = '';
+    for (const f of fields) {
+      if (f.field_type === 'textarea' || f.field_type === 'text') {
+        const v = content[f.field_key];
+        if (v) { snippet = v; break; }
+      }
+    }
+
+    html += `
+      <div class="review-item" onclick="openDetail('${r.review_date}')">
+        <div class="review-date-badge">
+          <div class="day">${day}</div>
+          <div class="month">${month}月</div>
+          <div class="weekday">周${wd}</div>
+        </div>
+        <div class="review-content">
+          ${moodVal ? `<div class="review-mood">${moodVal}</div>` : ''}
+          ${snippet ? `<div class="review-snippet">${escHtml(snippet)}</div>` : ''}
+          <div class="review-tags">
+            ${r.is_shared ? '<span class="badge badge-green">已分享</span>' : ''}
+          </div>
+        </div>
+      </div>`;
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+async function openDetail(dateStr) {
+  // 高亮日历
+  document.querySelectorAll('.cal-day').forEach(el => el.classList.remove('selected'));
+  
+  try {
+    const review = await apiFetch(`/api/reviews/${dateStr}`);
+    if (!review) return;
+    
+    const d = new Date(dateStr + 'T00:00:00');
+    const content = review.content;
+    
+    let html = `
+      <div class="detail-date">${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日</div>
+      <div class="detail-weekday">周${WEEKDAYS[d.getDay()]}</div>`;
+    
+    fields.forEach(f => {
+      const val = content[f.field_key];
+      if (val === undefined || val === null || val === '') return;
+      const displayVal = Array.isArray(val) ? val.join('、') : String(val);
+      html += `
+        <div class="detail-field">
+          <div class="detail-field-label">${escHtml(f.label)}</div>
+          <div class="detail-field-value">${escHtml(displayVal)}</div>
+        </div>`;
+    });
+
+    html += `
+      <div class="detail-share-bar">
+        <button class="btn btn-primary btn-sm" onclick="shareDetailImage()">🖼️ 导出图片</button>
+        <button class="btn btn-ghost btn-sm" onclick="shareCopyDetailText('${dateStr}')">📋 复制文本</button>
+        ${review.is_shared ? `<button class="btn btn-ghost btn-sm" onclick="copyExistingLink('${review.share_token}')">🔗 分享链接</button>` : `<button class="btn btn-ghost btn-sm" onclick="createShare('${dateStr}')">🔗 生成链接</button>`}
+      </div>`;
+
+    document.getElementById('detailContent').innerHTML = html;
+    document.getElementById('detailPanel').classList.add('open');
+    document.getElementById('overlay').style.display = 'block';
+    
+    // 存储当前查看的review
+    window._currentDetailReview = review;
+    window._currentDetailDate = dateStr;
+  } catch(e) {
+    showToast('加载失败', 'error');
+  }
+}
+
+function closeDetail() {
+  document.getElementById('detailPanel').classList.remove('open');
+  document.getElementById('overlay').style.display = 'none';
+}
+
+function changeMonth(delta) {
+  currentMonth += delta;
+  if (currentMonth > 12) { currentMonth = 1; currentYear++; }
+  if (currentMonth < 1) { currentMonth = 12; currentYear--; }
+  loadMonth();
+}
+
+async function shareDetailImage() {
+  const el = document.getElementById('detailContent');
+  showToast('正在生成图片…');
+  const canvas = await html2canvas(el, {scale:2, backgroundColor:'#FFFFFF', useCORS:true});
+  const link = document.createElement('a');
+  link.download = `疗愈复盘_${window._currentDetailDate}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  showToast('图片已保存 🖼️', 'success');
+}
+
+function shareCopyDetailText(dateStr) {
+  const review = window._currentDetailReview;
+  if (!review) return;
+  const d = new Date(dateStr + 'T00:00:00');
+  let text = `🌿 疗愈复盘 · ${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（周${WEEKDAYS[d.getDay()]}）\n\n`;
+  fields.forEach(f => {
+    const val = review.content[f.field_key];
+    if (val !== undefined && val !== null && val !== '') {
+      text += `• ${f.label}：${Array.isArray(val)?val.join('、'):val}\n`;
+    }
+  });
+  text += '\n— 来自疗愈日记本';
+  navigator.clipboard.writeText(text).then(() => showToast('已复制 📋', 'success'));
+}
+
+async function createShare(dateStr) {
+  try {
+    const data = await apiFetch(`/api/reviews/${dateStr}/share`, {method:'POST'});
+    const url = location.origin + data.share_url;
+    navigator.clipboard.writeText(url).then(() => showToast('分享链接已复制 🔗', 'success'));
+  } catch(e) {
+    showToast(e.message, 'error');
+  }
+}
+
+function copyExistingLink(token) {
+  const url = location.origin + '/share/' + token;
+  navigator.clipboard.writeText(url).then(() => showToast('分享链接已复制 🔗', 'success'));
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+init();
+</script>
+{% endblock %}

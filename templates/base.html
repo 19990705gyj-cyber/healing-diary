@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}疗愈日记本{% endblock %}</title>
+  <style>
+    :root {
+      --bg-warm: #FFF9F5;
+      --bg-card: #FFFFFF;
+      --primary: #FFB5A7;
+      --primary-dark: #F59080;
+      --secondary: #B7E1CD;
+      --accent: #C3B1E1;
+      --warm: #FFD9A0;
+      --text-primary: #5C4A3A;
+      --text-secondary: #9B8579;
+      --border: #F0E6DF;
+      --shadow: 0 4px 20px rgba(92, 74, 58, 0.08);
+      --shadow-hover: 0 8px 30px rgba(92, 74, 58, 0.14);
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: var(--bg-warm);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+
+    /* ── 导航栏 ── */
+    .navbar {
+      background: rgba(255, 249, 245, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .navbar-brand {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .navbar-brand .logo { font-size: 1.4rem; }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .nav-link {
+      padding: 7px 14px;
+      border-radius: var(--radius-sm);
+      text-decoration: none;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+    .nav-link:hover, .nav-link.active {
+      background: var(--primary);
+      color: white;
+    }
+    .nav-avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; color: white; font-size: 0.9rem;
+      cursor: pointer;
+      position: relative;
+    }
+    .dropdown {
+      position: absolute;
+      top: 46px; right: 0;
+      background: white;
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-hover);
+      border: 1px solid var(--border);
+      min-width: 140px;
+      display: none;
+      overflow: hidden;
+    }
+    .dropdown.open { display: block; }
+    .dropdown a {
+      display: block;
+      padding: 10px 16px;
+      text-decoration: none;
+      color: var(--text-primary);
+      font-size: 0.88rem;
+      transition: background 0.15s;
+    }
+    .dropdown a:hover { background: var(--bg-warm); }
+    .dropdown .divider { height: 1px; background: var(--border); }
+
+    /* ── 主容器 ── */
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+    .container-wide {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+
+    /* ── 卡片 ── */
+    .card {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 28px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border);
+      transition: box-shadow 0.2s;
+    }
+    .card:hover { box-shadow: var(--shadow-hover); }
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ── 按钮 ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 20px;
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-dark); box-shadow: 0 4px 12px rgba(255, 181, 167, 0.5); }
+    .btn-secondary { background: var(--secondary); color: var(--text-primary); }
+    .btn-accent { background: var(--accent); color: white; }
+    .btn-ghost { background: var(--bg-warm); color: var(--text-secondary); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: var(--border); }
+    .btn-sm { padding: 6px 14px; font-size: 0.82rem; }
+    .btn-lg { padding: 13px 28px; font-size: 0.98rem; }
+    .btn-full { width: 100%; justify-content: center; }
+
+    /* ── 表单 ── */
+    .form-group { margin-bottom: 22px; }
+    .form-label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+    .form-label .required { color: var(--primary-dark); margin-left: 2px; }
+    .form-input, .form-textarea, .form-select {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+      color: var(--text-primary);
+      background: var(--bg-warm);
+      font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-input:focus, .form-textarea:focus, .form-select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(255, 181, 167, 0.2);
+      background: white;
+    }
+    .form-textarea { resize: vertical; min-height: 100px; line-height: 1.6; }
+
+    /* ── 情绪选择器 ── */
+    .mood-picker {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .mood-option {
+      padding: 10px 16px;
+      border: 2px solid var(--border);
+      border-radius: 50px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      transition: all 0.2s;
+      background: var(--bg-warm);
+    }
+    .mood-option:hover { border-color: var(--primary); background: #FFF0ED; }
+    .mood-option.selected {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: white;
+    }
+
+    /* ── 评分组件 ── */
+    .rating-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .rating-dots {
+      display: flex;
+      gap: 6px;
+    }
+    .rating-dot {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      transition: all 0.15s;
+      background: var(--bg-warm);
+    }
+    .rating-dot:hover { border-color: var(--primary); }
+    .rating-dot.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+    }
+    .rating-label { font-size: 0.85rem; color: var(--text-secondary); min-width: 40px; }
+
+    /* ── 单选/多选 ── */
+    .choice-list { display: flex; flex-wrap: wrap; gap: 8px; }
+    .choice-item {
+      padding: 8px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 50px;
+      cursor: pointer;
+      font-size: 0.86rem;
+      transition: all 0.2s;
+      background: var(--bg-warm);
+    }
+    .choice-item:hover { border-color: var(--secondary); }
+    .choice-item.selected { border-color: var(--secondary); background: var(--secondary); color: var(--text-primary); }
+
+    /* ── 滑块 ── */
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--primary);
+      height: 6px;
+    }
+    .slider-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    /* ── 吐司通知 ── */
+    .toast {
+      position: fixed;
+      bottom: 24px; right: 24px;
+      background: var(--text-primary);
+      color: white;
+      padding: 12px 20px;
+      border-radius: var(--radius-sm);
+      font-size: 0.88rem;
+      box-shadow: var(--shadow-hover);
+      z-index: 9999;
+      transform: translateY(80px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.success { background: #52B788; }
+    .toast.error { background: #E07A5F; }
+
+    /* ── 加载指示 ── */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 0;
+      gap: 8px;
+      color: var(--text-secondary);
+    }
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── 空状态 ── */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-secondary);
+    }
+    .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+    .empty-state p { font-size: 0.92rem; margin-bottom: 16px; }
+
+    /* ── 标签/徽章 ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 10px;
+      border-radius: 50px;
+      font-size: 0.76rem;
+      font-weight: 600;
+    }
+    .badge-primary { background: #FFF0ED; color: var(--primary-dark); }
+    .badge-green { background: #E8F5EE; color: #2D6A4F; }
+    .badge-purple { background: #F0EBFA; color: #6B4FA0; }
+
+    /* ── 页面标题 ── */
+    .page-header {
+      margin-bottom: 28px;
+    }
+    .page-header h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+    }
+    .page-header p {
+      color: var(--text-secondary);
+      font-size: 0.92rem;
+    }
+
+    /* ── 分割线 ── */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 20px 0;
+    }
+
+    /* ── 响应式 ── */
+    @media (max-width: 600px) {
+      .container, .container-wide { padding: 20px 16px; }
+      .navbar { padding: 0 16px; }
+      .nav-links .nav-link span { display: none; }
+      .card { padding: 20px; }
+    }
+  </style>
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+{% if current_user is defined and current_user.is_authenticated %}
+<nav class="navbar">
+  <a href="/" class="navbar-brand">
+    <span class="logo">🌿</span>
+    <span>疗愈日记本</span>
+  </a>
+  <div class="nav-links">
+    <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">
+      <span>✍️ 今日复盘</span>
+    </a>
+    <a href="/history" class="nav-link {% if '/history' in request.path %}active{% endif %}">
+      <span>📖 历史</span>
+    </a>
+    <a href="/weekly" class="nav-link {% if '/weekly' in request.path %}active{% endif %}">
+      <span>📊 周报</span>
+    </a>
+    {% if current_user.role == 'admin' %}
+    <a href="/admin" class="nav-link {% if '/admin' in request.path %}active{% endif %}">
+      <span>⚙️ 管理</span>
+    </a>
+    {% endif %}
+    <div style="position:relative; margin-left:8px;">
+      <div class="nav-avatar" id="avatarBtn"
+           style="background: {{ current_user.avatar_color }}">
+        {{ current_user.username[0].upper() }}
+      </div>
+      <div class="dropdown" id="userDropdown">
+        <a href="#" style="pointer-events:none; opacity:.6; font-size:.78rem;">
+          {{ current_user.username }}
+        </a>
+        <div class="divider"></div>
+        <a href="#" onclick="logout()">退出登录</a>
+      </div>
+    </div>
+  </div>
+</nav>
+{% endif %}
+
+<div id="toast" class="toast"></div>
+
+{% block content %}{% endblock %}
+
+<script>
+// 全局工具函数
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (type ? ' ' + type : '');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+async function apiFetch(url, options={}) {
+  const res = await fetch(url, {
+    headers: {'Content-Type': 'application/json'},
+    ...options
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || '请求失败');
+  }
+  return res.json();
+}
+
+async function logout() {
+  await fetch('/api/auth/logout', {method:'POST'});
+  location.href = '/login';
+}
+
+// 头像下拉
+const avatarBtn = document.getElementById('avatarBtn');
+const dropdown = document.getElementById('userDropdown');
+if (avatarBtn) {
+  avatarBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    dropdown.classList.toggle('open');
+  });
+  document.addEventListener('click', () => dropdown?.classList.remove('open'));
+}
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

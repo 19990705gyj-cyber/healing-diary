@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>疗愈复盘分享</title>
+  <style>
+    :root {
+      --bg-warm: #FFF9F5;
+      --primary: #FFB5A7;
+      --primary-dark: #F59080;
+      --secondary: #B7E1CD;
+      --accent: #C3B1E1;
+      --text-primary: #5C4A3A;
+      --text-secondary: #9B8579;
+      --border: #F0E6DF;
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: var(--bg-warm);
+      min-height: 100vh;
+      padding: 24px 16px 60px;
+    }
+
+    .header {
+      text-align: center;
+      padding: 32px 0 24px;
+    }
+    .header .logo { font-size: 2.5rem; display: block; margin-bottom: 8px; }
+    .header .app-name {
+      font-size: 1rem;
+      color: var(--text-secondary);
+      font-weight: 600;
+    }
+
+    .share-card {
+      max-width: 540px;
+      margin: 0 auto;
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: 0 8px 40px rgba(92, 74, 58, 0.12);
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    /* 卡头 */
+    .card-top {
+      background: linear-gradient(135deg, #FFF0ED 0%, #F0EBFA 100%);
+      padding: 28px 32px 24px;
+      text-align: center;
+    }
+    .user-avatar {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: white;
+      margin-bottom: 12px;
+    }
+    .user-name { font-size: 1.1rem; font-weight: 700; color: var(--text-primary); }
+    .share-date { font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px; }
+
+    /* 字段内容 */
+    .card-body { padding: 24px 32px; }
+    .field-block { margin-bottom: 22px; }
+    .field-block:last-child { margin-bottom: 0; }
+    .field-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 7px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .field-value {
+      font-size: 0.95rem;
+      color: var(--text-primary);
+      line-height: 1.7;
+      white-space: pre-wrap;
+    }
+    .field-value.mood-display {
+      font-size: 1.15rem;
+    }
+    .rating-display {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+    }
+    .rating-display .dot {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: var(--border);
+    }
+    .rating-display .dot.filled { background: var(--primary); }
+
+    /* 底部 */
+    .card-footer {
+      background: var(--bg-warm);
+      padding: 16px 32px;
+      text-align: center;
+      border-top: 1px solid var(--border);
+    }
+    .footer-cta {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+    .footer-cta a {
+      color: var(--primary-dark);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    /* 分享操作 */
+    .share-actions {
+      max-width: 540px;
+      margin: 20px auto 0;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+    .btn {
+      padding: 10px 20px;
+      border-radius: var(--radius-sm);
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-ghost { background: white; color: var(--text-primary); border: 1.5px solid var(--border); }
+
+    .divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+    .loading {
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--text-secondary);
+    }
+    .spinner {
+      width: 24px; height: 24px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .toast {
+      position: fixed;
+      bottom: 24px; right: 24px;
+      background: var(--text-primary);
+      color: white;
+      padding: 12px 20px;
+      border-radius: var(--radius-sm);
+      font-size: 0.88rem;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+      z-index: 9999;
+      transform: translateY(80px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.success { background: #52B788; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <span class="logo">🌿</span>
+    <div class="app-name">疗愈日记本</div>
+  </div>
+
+  <div id="mainArea">
+    <div class="loading"><div class="spinner"></div>加载中…</div>
+  </div>
+
+  <div class="share-actions" id="shareActions" style="display:none">
+    <button class="btn btn-ghost" onclick="copyCurrentUrl()">🔗 复制链接</button>
+    <button class="btn btn-primary" onclick="saveAsImage()">🖼️ 保存图片</button>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+const token = '{{ token }}';
+
+const FIELD_ICONS = {text:'✏️', textarea:'📝', rating:'⭐', mood_picker:'💛', single_choice:'🔘', multi_choice:'☑️', slider:'🎚️'};
+const WEEKDAYS = ['日','一','二','三','四','五','六'];
+
+async function init() {
+  try {
+    const data = await fetch(`/api/share/${token}`).then(r => {
+      if (!r.ok) throw new Error('not found');
+      return r.json();
+    });
+    renderShare(data);
+    document.getElementById('shareActions').style.display = 'flex';
+  } catch(e) {
+    document.getElementById('mainArea').innerHTML = `
+      <div class="loading">
+        <div style="font-size:3rem">🔒</div>
+        <p style="margin-top:12px">此分享链接已失效或不存在</p>
+        <a href="/login" style="display:inline-block;margin-top:16px;padding:10px 20px;background:#FFB5A7;color:white;border-radius:10px;text-decoration:none;font-weight:600">进入疗愈日记本</a>
+      </div>`;
+  }
+}
+
+function renderShare(data) {
+  const { review, fields } = data;
+  const d = new Date(review.review_date + 'T00:00:00');
+  const dateStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（周${WEEKDAYS[d.getDay()]}）`;
+  const username = review.username || '匿名';
+  const avatarColor = review.avatar_color || '#FFB5A7';
+  const content = review.content;
+
+  let fieldsHTML = '';
+  fields.forEach(f => {
+    const val = content[f.field_key];
+    if (val === undefined || val === null || val === '') return;
+    
+    let valueHTML = '';
+    if (f.field_type === 'rating') {
+      const num = Number(val);
+      let dots = '<div class="rating-display">';
+      for (let i=1; i<=10; i++) dots += `<div class="dot ${i<=num?'filled':''}"></div>`;
+      dots += `<span style="margin-left:6px;font-weight:700;color:var(--primary-dark)">${num}/10</span></div>`;
+      valueHTML = dots;
+    } else if (f.field_type === 'mood_picker') {
+      valueHTML = `<div class="field-value mood-display">${escHtml(val)}</div>`;
+    } else {
+      const displayVal = Array.isArray(val) ? val.join('、') : String(val);
+      valueHTML = `<div class="field-value">${escHtml(displayVal)}</div>`;
+    }
+
+    fieldsHTML += `
+      <div class="field-block">
+        <div class="field-label">${FIELD_ICONS[f.field_type] || '📌'} ${escHtml(f.label)}</div>
+        ${f.field_type !== 'mood_picker' ? valueHTML : valueHTML}
+      </div>`;
+  });
+
+  document.getElementById('mainArea').innerHTML = `
+    <div class="share-card" id="shareCard">
+      <div class="card-top">
+        <div class="user-avatar" style="background:${avatarColor}">${username[0].toUpperCase()}</div>
+        <div class="user-name">${escHtml(username)}</div>
+        <div class="share-date">📅 ${dateStr}</div>
+      </div>
+      <div class="card-body" id="cardBody">
+        ${fieldsHTML || '<p style="color:var(--text-secondary);font-size:.9rem;text-align:center">暂无内容</p>'}
+      </div>
+      <div class="card-footer">
+        <div class="footer-cta">✍️ 想要记录自己的疗愈日记？<a href="/login">来加入我们</a></div>
+      </div>
+    </div>`;
+}
+
+function copyCurrentUrl() {
+  navigator.clipboard.writeText(location.href).then(() => showToast('链接已复制 ✓', 'success'));
+}
+
+async function saveAsImage() {
+  const card = document.getElementById('shareCard');
+  if (!card) return;
+  showToast('正在生成图片…');
+  const canvas = await html2canvas(card, {scale:2, backgroundColor:'#FFFFFF', useCORS:true});
+  const link = document.createElement('a');
+  link.download = `疗愈复盘分享.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  showToast('图片已保存 🖼️', 'success');
+}
+
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (type ? ' '+type : '');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+init();
+</script>
+</body>
+</html>

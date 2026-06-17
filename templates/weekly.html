@@ -1,0 +1,574 @@
+{% extends "base.html" %}
+{% block title %}周报看板 · 疗愈日记本{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* 周切换 */
+  .week-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 28px;
+  }
+  .week-nav-btn {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    background: white;
+    cursor: pointer;
+    font-size: 1.1rem;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    color: var(--text-secondary);
+  }
+  .week-nav-btn:hover { border-color: var(--primary); color: var(--primary-dark); }
+  .week-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-align: center;
+  }
+  .week-title .sub { font-size: 0.78rem; font-weight: 400; color: var(--text-secondary); }
+
+  /* 统计大数字卡片 */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .stat-card {
+    background: white;
+    border-radius: var(--radius);
+    padding: 22px 20px;
+    border: 1px solid var(--border);
+    text-align: center;
+    transition: box-shadow 0.2s;
+  }
+  .stat-card:hover { box-shadow: var(--shadow-hover); }
+  .stat-card .stat-icon { font-size: 1.8rem; margin-bottom: 8px; }
+  .stat-card .stat-num {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1;
+  }
+  .stat-card .stat-num .unit { font-size: 1rem; font-weight: 500; }
+  .stat-card .stat-label {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin-top: 6px;
+  }
+
+  /* 打卡日历条 */
+  .checkin-strip {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+    margin-bottom: 4px;
+  }
+  .checkin-day {
+    flex: 1;
+    border-radius: var(--radius-sm);
+    padding: 12px 8px;
+    text-align: center;
+    font-size: 0.78rem;
+  }
+  .checkin-day.done {
+    background: linear-gradient(135deg, #FFF0ED, #FFE8E4);
+    border: 1.5px solid var(--primary);
+    color: var(--primary-dark);
+    font-weight: 700;
+  }
+  .checkin-day.miss {
+    background: var(--bg-warm);
+    border: 1.5px dashed var(--border);
+    color: var(--text-secondary);
+  }
+  .checkin-day .wd { font-size: 0.7rem; margin-bottom: 4px; }
+  .checkin-day .md { font-size: 0.76rem; font-weight: 700; }
+  .checkin-day .mood-small { font-size: 1rem; margin-top: 4px; }
+
+  /* 图表容器 */
+  .chart-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .chart-card {
+    background: white;
+    border-radius: var(--radius);
+    padding: 22px;
+    border: 1px solid var(--border);
+  }
+  .chart-card .chart-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+  }
+  .chart-canvas-wrap { position: relative; height: 200px; }
+
+  /* 本周摘要 */
+  .summary-list { display: flex; flex-direction: column; gap: 8px; }
+  .summary-item {
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .summary-header {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    background: var(--bg-warm);
+    transition: background 0.15s;
+  }
+  .summary-header:hover { background: #FFF0ED; }
+  .summary-header .date-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .summary-header .mood-show { font-size: 1rem; }
+  .summary-header .chevron {
+    transition: transform 0.2s;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+  }
+  .summary-header.expanded .chevron { transform: rotate(90deg); }
+  .summary-body {
+    display: none;
+    padding: 16px;
+    background: white;
+  }
+  .summary-body.open { display: block; }
+  .summary-field { margin-bottom: 12px; }
+  .summary-field .sf-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 3px;
+  }
+  .summary-field .sf-value {
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+
+  /* 导出按钮 */
+  .export-bar {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-bottom: 20px;
+  }
+
+  @media(max-width:600px) {
+    .stats-row { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .chart-row { grid-template-columns: 1fr; }
+    .stat-card .stat-num { font-size: 1.6rem; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-wide" id="weeklyReport">
+  <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+    <div>
+      <h1>📊 周报看板</h1>
+      <p>每一周的成长，都值得被看见</p>
+    </div>
+    <div class="export-bar" style="margin:0">
+      <button class="btn btn-ghost btn-sm" onclick="exportImage()">🖼️ 导出图片</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportPDF()">📄 导出PDF</button>
+    </div>
+  </div>
+
+  <!-- 周切换 -->
+  <div class="week-nav">
+    <button class="week-nav-btn" onclick="changeWeek(-1)">‹</button>
+    <div class="week-title">
+      <div id="weekRangeTitle">加载中…</div>
+      <div class="sub" id="weekOffsetLabel">本周</div>
+    </div>
+    <button class="week-nav-btn" id="nextWeekBtn" onclick="changeWeek(1)">›</button>
+  </div>
+
+  <div id="reportArea">
+    <div class="loading"><div class="spinner"></div> 生成周报中…</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+let weekOffset = 0;
+let chartInstances = {};
+let weekData = null;
+
+const HEALING_COLORS = {
+  primary: 'rgba(255, 181, 167, 0.9)',
+  primaryBorder: '#F59080',
+  secondary: 'rgba(183, 225, 205, 0.85)',
+  secondaryBorder: '#52B788',
+  accent: 'rgba(195, 177, 225, 0.85)',
+  accentBorder: '#9B72CF',
+};
+
+async function init() {
+  await loadWeek();
+}
+
+async function loadWeek() {
+  document.getElementById('reportArea').innerHTML = '<div class="loading"><div class="spinner"></div> 生成周报中…</div>';
+
+  // 销毁旧图表
+  Object.values(chartInstances).forEach(c => c.destroy());
+  chartInstances = {};
+
+  try {
+    weekData = await apiFetch(`/api/reviews/weekly-stats?offset=${weekOffset}`);
+    renderReport();
+  } catch(e) {
+    document.getElementById('reportArea').innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><p>加载失败</p></div>`;
+  }
+}
+
+function renderReport() {
+  const { days, checkin_count, streak, week_start, week_end, mood_field, rating_field } = weekData;
+
+  // 标题
+  const s = new Date(week_start + 'T00:00:00');
+  const e = new Date(week_end + 'T00:00:00');
+  document.getElementById('weekRangeTitle').textContent = 
+    `${s.getMonth()+1}/${s.getDate()} — ${e.getMonth()+1}/${e.getDate()}`;
+  document.getElementById('weekOffsetLabel').textContent = 
+    weekOffset === 0 ? '本周' : (weekOffset === -1 ? '上周' : `${Math.abs(weekOffset)}周前`);
+  document.getElementById('nextWeekBtn').style.opacity = weekOffset >= 0 ? '0.3' : '1';
+  document.getElementById('nextWeekBtn').style.pointerEvents = weekOffset >= 0 ? 'none' : 'auto';
+
+  const html = buildReportHTML(days, checkin_count, streak, mood_field, rating_field);
+  document.getElementById('reportArea').innerHTML = html;
+
+  // 渲染图表
+  renderCharts(days, mood_field, rating_field);
+  bindSummaryToggles();
+}
+
+function buildReportHTML(days, checkin_count, streak, mood_field, rating_field) {
+  // 打卡日历条
+  let stripHTML = '<div class="checkin-strip">';
+  const WD = ['一','二','三','四','五','六','日'];
+  days.forEach((d, i) => {
+    const date = new Date(d.date + 'T00:00:00');
+    const moodVal = d.review?.content?.[mood_field?.field_key];
+    const moodEmoji = moodVal ? moodVal.split(' ')[0] : '';
+    stripHTML += `
+      <div class="checkin-day ${d.has_review ? 'done' : 'miss'}">
+        <div class="wd">周${WD[i]}</div>
+        <div class="md">${date.getMonth()+1}/${date.getDate()}</div>
+        ${d.has_review ? `<div class="mood-small">${moodEmoji || '✓'}</div>` : '<div class="mood-small" style="opacity:.3">—</div>'}
+      </div>`;
+  });
+  stripHTML += '</div>';
+
+  // 本周摘要手风琴
+  let summaryHTML = '<div class="summary-list">';
+  const filledDays = days.filter(d => d.has_review);
+  if (filledDays.length === 0) {
+    summaryHTML += '<div class="empty-state" style="padding:30px"><div class="icon">📝</div><p>本周还没有复盘记录</p></div>';
+  } else {
+    filledDays.forEach(d => {
+      const date = new Date(d.date + 'T00:00:00');
+      const content = d.review.content;
+      const moodVal = mood_field ? content[mood_field.field_key] : null;
+      const moodEmoji = moodVal ? moodVal.split(' ')[0] : '📝';
+      
+      summaryHTML += `
+        <div class="summary-item">
+          <div class="summary-header" onclick="toggleSummary(this)">
+            <div class="date-info">
+              <span class="mood-show">${moodEmoji}</span>
+              <span>${date.getMonth()+1}月${date.getDate()}日 · 周${WD[date.getDay()===0?6:date.getDay()-1]}</span>
+              ${moodVal ? `<span style="font-size:.78rem;color:var(--text-secondary);font-weight:400">${moodVal}</span>` : ''}
+            </div>
+            <span class="chevron">›</span>
+          </div>
+          <div class="summary-body" data-date="${d.date}">
+            加载中…
+          </div>
+        </div>`;
+    });
+  }
+  summaryHTML += '</div>';
+
+  return `
+    <!-- 打卡条 -->
+    <div class="card" style="padding:20px 24px">
+      <div class="card-title">🗓️ 本周打卡情况</div>
+      ${stripHTML}
+    </div>
+
+    <!-- 统计大卡片 -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-icon">🎯</div>
+        <div class="stat-num">${checkin_count}<span class="unit">/7</span></div>
+        <div class="stat-label">本周打卡</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🔥</div>
+        <div class="stat-num">${streak}<span class="unit">天</span></div>
+        <div class="stat-label">连续打卡</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">💯</div>
+        <div class="stat-num">${Math.round(checkin_count/7*100)}<span class="unit">%</span></div>
+        <div class="stat-label">完成率</div>
+      </div>
+    </div>
+
+    <!-- 图表 -->
+    <div class="chart-row">
+      <div class="chart-card">
+        <div class="chart-title">🎯 打卡完成率</div>
+        <div class="chart-canvas-wrap">
+          <canvas id="chartDoughnut"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">${mood_field ? '💛 ' + mood_field.label + '趋势' : '📈 数据趋势'}</div>
+        <div class="chart-canvas-wrap">
+          <canvas id="chartMood"></canvas>
+        </div>
+      </div>
+    </div>
+
+    ${rating_field ? `
+    <div class="chart-row">
+      <div class="chart-card" style="grid-column:1/-1">
+        <div class="chart-title">⚡ ${rating_field.label}趋势</div>
+        <div class="chart-canvas-wrap" style="height:180px">
+          <canvas id="chartEnergy"></canvas>
+        </div>
+      </div>
+    </div>` : ''}
+
+    <!-- 本周摘要 -->
+    <div class="card" style="padding:20px 24px">
+      <div class="card-title">📋 本周复盘摘要</div>
+      ${summaryHTML}
+    </div>
+  `;
+}
+
+function renderCharts(days, mood_field, rating_field) {
+  const labels = days.map(d => {
+    const dt = new Date(d.date + 'T00:00:00');
+    return `${dt.getMonth()+1}/${dt.getDate()}`;
+  });
+
+  // 环形图
+  const dCtx = document.getElementById('chartDoughnut')?.getContext('2d');
+  if (dCtx) {
+    const done = days.filter(d => d.has_review).length;
+    chartInstances.doughnut = new Chart(dCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['已打卡', '未打卡'],
+        datasets: [{
+          data: [done, 7 - done],
+          backgroundColor: [HEALING_COLORS.primary, '#F5EEE9'],
+          borderColor: [HEALING_COLORS.primaryBorder, '#EBE0D8'],
+          borderWidth: 2,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        cutout: '65%',
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 16 } }
+        }
+      }
+    });
+  }
+
+  // 情绪折线图
+  const mCtx = document.getElementById('chartMood')?.getContext('2d');
+  if (mCtx && mood_field) {
+    const moodOptions = mood_field.options || [];
+    const moodData = days.map(d => {
+      const val = d.review?.content?.[mood_field.field_key];
+      if (val && moodOptions.includes(val)) return moodOptions.indexOf(val);
+      return null;
+    });
+    chartInstances.mood = new Chart(mCtx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: mood_field.label,
+          data: moodData,
+          borderColor: HEALING_COLORS.primaryBorder,
+          backgroundColor: HEALING_COLORS.primary,
+          tension: 0.4,
+          fill: true,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          spanGaps: false,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: {
+            min: 0, max: moodOptions.length - 1,
+            ticks: {
+              callback: (v) => moodOptions[v]?.split(' ')[0] || v,
+              font: { size: 11 }
+            },
+            grid: { color: '#F5EEE9' }
+          },
+          x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+        }
+      }
+    });
+  }
+
+  // 能量面积图
+  const eCtx = document.getElementById('chartEnergy')?.getContext('2d');
+  if (eCtx && rating_field) {
+    const energyData = days.map(d => {
+      const val = d.review?.content?.[rating_field.field_key];
+      return val != null ? Number(val) : null;
+    });
+    chartInstances.energy = new Chart(eCtx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: rating_field.label,
+          data: energyData,
+          borderColor: HEALING_COLORS.accentBorder,
+          backgroundColor: HEALING_COLORS.accent,
+          tension: 0.4,
+          fill: true,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          spanGaps: false,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: {
+            min: 0, max: 10,
+            ticks: { font: { size: 11 } },
+            grid: { color: '#F5EEE9' }
+          },
+          x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+        }
+      }
+    });
+  }
+}
+
+function bindSummaryToggles() {}
+
+function toggleSummary(header) {
+  header.classList.toggle('expanded');
+  const body = header.nextElementSibling;
+  body.classList.toggle('open');
+  
+  if (body.classList.contains('open') && body.textContent.trim() === '加载中…') {
+    const date = body.dataset.date;
+    const day = weekData.days.find(d => d.date === date);
+    if (day?.review) {
+      renderSummaryBody(body, day.review.content);
+    } else {
+      body.innerHTML = '<p style="color:var(--text-secondary);font-size:.85rem">无数据</p>';
+    }
+  }
+}
+
+function renderSummaryBody(bodyEl, content) {
+  const fields = weekData.mood_field ? [] : [];
+  // 用全局fields（通过API拿到的）
+  if (!window._weekFields) {
+    apiFetch('/api/fields').then(fs => {
+      window._weekFields = fs;
+      bodyEl.innerHTML = buildSummaryBodyHTML(fs, content);
+    });
+  } else {
+    bodyEl.innerHTML = buildSummaryBodyHTML(window._weekFields, content);
+  }
+}
+
+function buildSummaryBodyHTML(fields, content) {
+  let html = '';
+  fields.forEach(f => {
+    const val = content[f.field_key];
+    if (val === undefined || val === null || val === '') return;
+    const displayVal = Array.isArray(val) ? val.join('、') : String(val);
+    html += `<div class="summary-field">
+      <div class="sf-label">${escHtml(f.label)}</div>
+      <div class="sf-value">${escHtml(displayVal)}</div>
+    </div>`;
+  });
+  return html || '<p style="color:var(--text-secondary);font-size:.85rem">暂无内容</p>';
+}
+
+function changeWeek(delta) {
+  if (weekOffset + delta > 0) return;
+  weekOffset += delta;
+  loadWeek();
+}
+
+async function exportImage() {
+  showToast('正在生成图片…');
+  const el = document.getElementById('weeklyReport');
+  const canvas = await html2canvas(el, {scale:1.5, backgroundColor:'#FFF9F5', useCORS:true});
+  const link = document.createElement('a');
+  const ws = weekData?.week_start || 'week';
+  link.download = `周报_${ws}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  showToast('图片已保存 🖼️', 'success');
+}
+
+async function exportPDF() {
+  showToast('正在生成PDF…');
+  const el = document.getElementById('weeklyReport');
+  const canvas = await html2canvas(el, {scale:1.5, backgroundColor:'#FFF9F5', useCORS:true});
+  const imgData = canvas.toDataURL('image/png');
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({orientation:'p', unit:'px', format:[canvas.width/1.5, canvas.height/1.5]});
+  pdf.addImage(imgData, 'PNG', 0, 0, canvas.width/1.5, canvas.height/1.5);
+  const ws = weekData?.week_start || 'week';
+  pdf.save(`周报_${ws}.pdf`);
+  showToast('PDF已保存 📄', 'success');
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// 预加载字段
+apiFetch('/api/fields').then(fs => window._weekFields = fs).catch(() => {});
+init();
+</script>
+{% endblock %}

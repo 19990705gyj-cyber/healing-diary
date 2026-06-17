@@ -1,0 +1,547 @@
+{% extends "base.html" %}
+{% block title %}今日复盘 · 疗愈日记本{% endblock %}
+
+{% block extra_css %}
+<style>
+  .date-header {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  .date-header .date-big {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .date-header .date-sub {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+  .date-header .date-quote {
+    margin-top: 12px;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #FFF0ED, #F0EBFA);
+    border-radius: 50px;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    display: inline-block;
+  }
+
+  /* 字段卡片 */
+  .field-card {
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px 28px;
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+    transition: box-shadow 0.2s;
+  }
+  .field-card:hover { box-shadow: var(--shadow-hover); }
+  .field-label {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .field-label .req { color: var(--primary-dark); font-size: 0.8rem; }
+
+  /* 底部操作栏 */
+  .action-bar {
+    background: white;
+    border-top: 1px solid var(--border);
+    padding: 16px 24px;
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    z-index: 50;
+  }
+  .save-status {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+  }
+  .save-status.saved { color: #52B788; }
+
+  /* 分享弹窗 */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: auto; }
+  .modal {
+    background: white;
+    border-radius: var(--radius);
+    padding: 32px;
+    max-width: 400px;
+    width: 90%;
+    transform: scale(0.95);
+    transition: transform 0.2s;
+  }
+  .modal-overlay.open .modal { transform: scale(1); }
+  .modal-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+  }
+  .share-options { display: flex; flex-direction: column; gap: 10px; }
+  .share-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .share-option:hover { border-color: var(--primary); background: #FFF7F5; }
+  .share-option .icon { font-size: 1.4rem; }
+  .share-option .info .name { font-size: 0.9rem; font-weight: 600; }
+  .share-option .info .desc { font-size: 0.78rem; color: var(--text-secondary); }
+  .share-link-box {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .share-link-box input {
+    flex: 1;
+    padding: 9px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    background: var(--bg-warm);
+    outline: none;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <!-- 日期头部 -->
+  <div class="date-header">
+    <div class="date-big" id="dateDisplay"></div>
+    <div class="date-sub" id="dateSubDisplay"></div>
+    <div class="date-quote" id="dailyQuote">🌿 今天，好好感受自己</div>
+  </div>
+
+  <!-- 表单区域 -->
+  <div id="formArea">
+    <div class="loading"><div class="spinner"></div> 加载复盘框架…</div>
+  </div>
+
+  <!-- 今日复盘已完成提示（顶部卡片） -->
+  <div id="completedBanner" style="display:none" class="card" 
+       style="background: linear-gradient(135deg, #F0FAFA, #F0EBFA); text-align:center; padding: 20px;">
+  </div>
+</div>
+
+<!-- 底部操作栏 -->
+<div class="action-bar" id="actionBar" style="display:none">
+  <div class="save-status" id="saveStatus">还未保存</div>
+  <div style="display:flex;gap:10px">
+    <button class="btn btn-ghost btn-sm" onclick="openShareModal()" id="shareBtn" style="display:none">
+      🔗 分享
+    </button>
+    <button class="btn btn-primary" onclick="saveReview()" id="saveBtn">
+      💾 保存复盘
+    </button>
+  </div>
+</div>
+
+<!-- 分享弹窗 -->
+<div class="modal-overlay" id="shareModal" onclick="closeShareModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title">🔗 分享今日复盘</div>
+    <div class="share-options">
+      <div class="share-option" onclick="shareLink()">
+        <div class="icon">🔗</div>
+        <div class="info">
+          <div class="name">生成分享链接</div>
+          <div class="desc">任何人打开链接即可查看</div>
+        </div>
+      </div>
+      <div class="share-option" onclick="shareImage()">
+        <div class="icon">🖼️</div>
+        <div class="info">
+          <div class="name">导出为图片</div>
+          <div class="desc">保存今日复盘为 PNG</div>
+        </div>
+      </div>
+      <div class="share-option" onclick="sharePDF()">
+        <div class="icon">📄</div>
+        <div class="info">
+          <div class="name">导出为 PDF</div>
+          <div class="desc">下载 PDF 文件</div>
+        </div>
+      </div>
+      <div class="share-option" onclick="shareCopyText()">
+        <div class="icon">📋</div>
+        <div class="info">
+          <div class="name">复制为文本</div>
+          <div class="desc">复制到剪贴板，粘贴到微信/钉钉</div>
+        </div>
+      </div>
+    </div>
+    <div id="shareLinkArea" style="display:none">
+      <div class="share-link-box">
+        <input type="text" id="shareLinkInput" readonly>
+        <button class="btn btn-primary btn-sm" onclick="copyShareLink()">复制</button>
+      </div>
+    </div>
+    <div style="margin-top:16px;text-align:right">
+      <button class="btn btn-ghost btn-sm" onclick="closeShareModal()">关闭</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+let fields = [];
+let todayReview = null;
+let formValues = {};
+let todayStr = '';
+
+const QUOTES = [
+  '🌿 今天，好好感受自己',
+  '☀️ 每一天都是新的开始',
+  '💛 你已经很棒了',
+  '🌱 慢慢来，比较快',
+  '🌸 允许自己不完美',
+  '🍵 深呼吸，一切都好',
+  '✨ 感谢今天遇见的每一刻',
+];
+
+const WEEKDAYS = ['周日','周一','周二','周三','周四','周五','周六'];
+
+async function init() {
+  const now = new Date();
+  todayStr = now.toISOString().split('T')[0];
+  const dateEl = document.getElementById('dateDisplay');
+  const subEl = document.getElementById('dateSubDisplay');
+  const quoteEl = document.getElementById('dailyQuote');
+  
+  dateEl.textContent = `${now.getMonth()+1}月${now.getDate()}日`;
+  subEl.textContent = `${now.getFullYear()}年 · ${WEEKDAYS[now.getDay()]}`;
+  quoteEl.textContent = QUOTES[now.getDay()];
+
+  try {
+    [fields, todayReview] = await Promise.all([
+      apiFetch('/api/fields'),
+      apiFetch('/api/reviews/today')
+    ]);
+    renderForm();
+  } catch(e) {
+    document.getElementById('formArea').innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><p>加载失败，请刷新重试</p></div>`;
+  }
+}
+
+function renderForm() {
+  if (!fields.length) {
+    document.getElementById('formArea').innerHTML = `
+      <div class="empty-state">
+        <div class="icon">📝</div>
+        <p>管理员还未设置复盘字段</p>
+        <p style="font-size:.8rem">请联系管理员配置复盘框架</p>
+      </div>`;
+    return;
+  }
+
+  const existingContent = todayReview ? todayReview.content : {};
+  formValues = {...existingContent};
+
+  let html = '';
+  fields.forEach(f => {
+    html += `<div class="field-card" id="field-card-${f.field_key}">`;
+    html += `<div class="field-label">`;
+    html += getFieldIcon(f.field_type) + ' ' + escHtml(f.label);
+    if (f.is_required) html += ` <span class="req">必填</span>`;
+    html += `</div>`;
+    html += renderFieldInput(f, existingContent[f.field_key]);
+    html += `</div>`;
+  });
+
+  document.getElementById('formArea').innerHTML = html;
+  document.getElementById('actionBar').style.display = 'flex';
+
+  if (todayReview) {
+    document.getElementById('saveStatus').textContent = '已保存 ✓';
+    document.getElementById('saveStatus').className = 'save-status saved';
+    document.getElementById('saveBtn').textContent = '✅ 更新复盘';
+    document.getElementById('shareBtn').style.display = 'flex';
+  }
+
+  // 绑定事件
+  bindFieldEvents();
+}
+
+function getFieldIcon(type) {
+  const icons = {text:'✏️', textarea:'📝', rating:'⭐', mood_picker:'💛', single_choice:'🔘', multi_choice:'☑️', slider:'🎚️'};
+  return icons[type] || '📌';
+}
+
+function renderFieldInput(field, currentValue) {
+  const key = field.field_key;
+  switch(field.field_type) {
+    case 'mood_picker': {
+      const opts = field.options || [];
+      let html = '<div class="mood-picker">';
+      opts.forEach(opt => {
+        const sel = currentValue === opt ? 'selected' : '';
+        html += `<div class="mood-option ${sel}" data-key="${key}" data-val="${escHtml(opt)}" onclick="selectMood(this)">${escHtml(opt)}</div>`;
+      });
+      html += '</div>';
+      return html;
+    }
+    case 'rating': {
+      const max = 10;
+      let html = '<div class="rating-row"><div class="rating-dots">';
+      for (let i=1; i<=max; i++) {
+        const active = currentValue == i ? 'active' : '';
+        html += `<div class="rating-dot ${active}" data-key="${key}" data-val="${i}" onclick="selectRating(this)">${i}</div>`;
+      }
+      html += `</div><div class="rating-label" id="rating-label-${key}">${currentValue ? currentValue+'/10' : ''}</div></div>`;
+      return html;
+    }
+    case 'slider': {
+      const val = currentValue || 5;
+      return `
+        <input type="range" min="1" max="10" value="${val}" 
+               data-key="${key}" oninput="updateSlider(this)"
+               id="slider-${key}">
+        <div class="slider-labels">
+          <span>很低 1</span>
+          <span id="slider-val-${key}" style="color:var(--primary-dark);font-weight:700">${val}</span>
+          <span>很高 10</span>
+        </div>`;
+    }
+    case 'single_choice': {
+      const opts = field.options || [];
+      let html = '<div class="choice-list">';
+      opts.forEach(opt => {
+        const sel = currentValue === opt ? 'selected' : '';
+        html += `<div class="choice-item ${sel}" data-key="${key}" data-val="${escHtml(opt)}" data-multi="false" onclick="selectChoice(this)">${escHtml(opt)}</div>`;
+      });
+      html += '</div>';
+      return html;
+    }
+    case 'multi_choice': {
+      const opts = field.options || [];
+      const selected = Array.isArray(currentValue) ? currentValue : [];
+      let html = '<div class="choice-list">';
+      opts.forEach(opt => {
+        const sel = selected.includes(opt) ? 'selected' : '';
+        html += `<div class="choice-item ${sel}" data-key="${key}" data-val="${escHtml(opt)}" data-multi="true" onclick="selectChoice(this)">${escHtml(opt)}</div>`;
+      });
+      html += '</div>';
+      return html;
+    }
+    case 'textarea': {
+      return `<textarea class="form-textarea" rows="4" data-key="${key}" 
+                placeholder="${escHtml(field.placeholder||'')}"
+                oninput="updateTextValue(this)">${escHtml(currentValue||'')}</textarea>`;
+    }
+    case 'text':
+    default: {
+      return `<input type="text" class="form-input" data-key="${key}"
+               placeholder="${escHtml(field.placeholder||'')}"
+               value="${escHtml(currentValue||'')}"
+               oninput="updateTextValue(this)">`;
+    }
+  }
+}
+
+function bindFieldEvents() {
+  // slider 初始化
+  document.querySelectorAll('input[type="range"]').forEach(slider => {
+    const key = slider.dataset.key;
+    if (!formValues[key]) formValues[key] = parseInt(slider.value);
+  });
+}
+
+function selectMood(el) {
+  const key = el.dataset.key;
+  document.querySelectorAll(`.mood-option[data-key="${key}"]`).forEach(e => e.classList.remove('selected'));
+  el.classList.add('selected');
+  formValues[key] = el.dataset.val;
+  markDirty();
+}
+
+function selectRating(el) {
+  const key = el.dataset.key;
+  const val = parseInt(el.dataset.val);
+  document.querySelectorAll(`.rating-dot[data-key="${key}"]`).forEach((e, i) => {
+    e.classList.toggle('active', parseInt(e.dataset.val) <= val);
+  });
+  document.getElementById(`rating-label-${key}`).textContent = val + '/10';
+  formValues[key] = val;
+  markDirty();
+}
+
+function updateSlider(el) {
+  const key = el.dataset.key;
+  const val = el.value;
+  document.getElementById(`slider-val-${key}`).textContent = val;
+  formValues[key] = parseInt(val);
+  markDirty();
+}
+
+function selectChoice(el) {
+  const key = el.dataset.key;
+  const multi = el.dataset.multi === 'true';
+  if (multi) {
+    el.classList.toggle('selected');
+    const selected = [...document.querySelectorAll(`.choice-item[data-key="${key}"].selected`)]
+      .map(e => e.dataset.val);
+    formValues[key] = selected;
+  } else {
+    document.querySelectorAll(`.choice-item[data-key="${key}"]`).forEach(e => e.classList.remove('selected'));
+    el.classList.add('selected');
+    formValues[key] = el.dataset.val;
+  }
+  markDirty();
+}
+
+function updateTextValue(el) {
+  formValues[el.dataset.key] = el.value;
+  markDirty();
+}
+
+function markDirty() {
+  document.getElementById('saveStatus').textContent = '有未保存的修改';
+  document.getElementById('saveStatus').className = 'save-status';
+}
+
+async function saveReview() {
+  // 检查必填
+  const missing = fields.filter(f => f.is_required && !formValues[f.field_key]);
+  if (missing.length) {
+    showToast(`请填写必填项：${missing.map(f=>f.label).join('、')}`, 'error');
+    return;
+  }
+
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true;
+  btn.textContent = '保存中…';
+
+  try {
+    todayReview = await apiFetch('/api/reviews/today', {
+      method: 'POST',
+      body: JSON.stringify({content: formValues})
+    });
+    document.getElementById('saveStatus').textContent = '已保存 ✓';
+    document.getElementById('saveStatus').className = 'save-status saved';
+    document.getElementById('shareBtn').style.display = 'flex';
+    btn.textContent = '✅ 更新复盘';
+    showToast('复盘已保存 🌿', 'success');
+  } catch(e) {
+    showToast(e.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ── 分享功能 ──
+function openShareModal() {
+  if (!todayReview) { showToast('请先保存复盘', 'error'); return; }
+  document.getElementById('shareModal').classList.add('open');
+  document.getElementById('shareLinkArea').style.display = 'none';
+}
+function closeShareModal(e) {
+  if (!e || e.target === document.getElementById('shareModal')) {
+    document.getElementById('shareModal').classList.remove('open');
+  }
+}
+
+async function shareLink() {
+  try {
+    const data = await apiFetch(`/api/reviews/${todayStr}/share`, {method:'POST'});
+    const url = location.origin + data.share_url;
+    document.getElementById('shareLinkInput').value = url;
+    document.getElementById('shareLinkArea').style.display = 'block';
+  } catch(e) {
+    showToast(e.message, 'error');
+  }
+}
+
+function copyShareLink() {
+  const input = document.getElementById('shareLinkInput');
+  navigator.clipboard.writeText(input.value).then(() => showToast('链接已复制 ✓', 'success'));
+}
+
+async function shareImage() {
+  closeShareModal();
+  showToast('正在生成图片…');
+  try {
+    const el = document.getElementById('formArea');
+    const canvas = await html2canvas(el, {scale: 2, backgroundColor: '#FFF9F5', useCORS: true});
+    const link = document.createElement('a');
+    link.download = `疗愈复盘_${todayStr}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showToast('图片已保存 🖼️', 'success');
+  } catch(e) {
+    showToast('生成失败：' + e.message, 'error');
+  }
+}
+
+async function sharePDF() {
+  closeShareModal();
+  showToast('正在生成PDF…');
+  try {
+    const el = document.getElementById('formArea');
+    const canvas = await html2canvas(el, {scale: 2, backgroundColor: '#FFF9F5', useCORS: true});
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({orientation: canvas.width > canvas.height ? 'l':'p', unit:'px', format:[canvas.width/2, canvas.height/2]});
+    pdf.addImage(imgData, 'PNG', 0, 0, canvas.width/2, canvas.height/2);
+    pdf.save(`疗愈复盘_${todayStr}.pdf`);
+    showToast('PDF已保存 📄', 'success');
+  } catch(e) {
+    showToast('生成失败：' + e.message, 'error');
+  }
+}
+
+function shareCopyText() {
+  closeShareModal();
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日（${WEEKDAYS[now.getDay()]}）`;
+  let text = `🌿 疗愈复盘 · ${dateStr}\n\n`;
+  
+  fields.forEach(f => {
+    const val = formValues[f.field_key];
+    if (val !== undefined && val !== null && val !== '') {
+      const displayVal = Array.isArray(val) ? val.join('、') : val;
+      text += `${getFieldIcon(f.field_type)} ${f.label}：${displayVal}\n`;
+    }
+  });
+  text += '\n— 来自疗愈日记本';
+  
+  navigator.clipboard.writeText(text).then(() => showToast('已复制到剪贴板 📋', 'success'));
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+init();
+</script>
+{% endblock %}

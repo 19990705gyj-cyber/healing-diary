@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>登录 · 疗愈日记本</title>
+  <style>
+    :root {
+      --bg-warm: #FFF9F5;
+      --primary: #FFB5A7;
+      --primary-dark: #F59080;
+      --secondary: #B7E1CD;
+      --accent: #C3B1E1;
+      --text-primary: #5C4A3A;
+      --text-secondary: #9B8579;
+      --border: #F0E6DF;
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: var(--bg-warm);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .page-wrap {
+      width: 100%;
+      max-width: 420px;
+    }
+    .logo-area {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .logo-icon {
+      font-size: 3.5rem;
+      display: block;
+      margin-bottom: 10px;
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    .logo-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .logo-sub {
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      margin-top: 6px;
+    }
+    .card {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: 0 8px 40px rgba(92, 74, 58, 0.1);
+      padding: 36px 32px;
+      border: 1px solid var(--border);
+    }
+    /* 标签切换 */
+    .tabs {
+      display: flex;
+      background: var(--bg-warm);
+      border-radius: var(--radius-sm);
+      padding: 4px;
+      margin-bottom: 28px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 9px;
+      text-align: center;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 7px;
+      transition: all 0.2s;
+      color: var(--text-secondary);
+    }
+    .tab-btn.active {
+      background: white;
+      color: var(--text-primary);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    /* 表单 */
+    .form-group { margin-bottom: 18px; }
+    label {
+      display: block;
+      font-size: 0.86rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 7px;
+    }
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+      color: var(--text-primary);
+      background: var(--bg-warm);
+      font-family: inherit;
+      transition: all 0.2s;
+      outline: none;
+    }
+    input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(255, 181, 167, 0.2);
+      background: white;
+    }
+    .btn-submit {
+      width: 100%;
+      padding: 13px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 8px;
+    }
+    .btn-submit:hover {
+      background: var(--primary-dark);
+      box-shadow: 0 4px 16px rgba(255, 181, 167, 0.5);
+      transform: translateY(-1px);
+    }
+    .btn-submit:active { transform: translateY(0); }
+    .btn-submit:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+    .error-msg {
+      background: #FFF0EE;
+      border: 1px solid #FFCCC5;
+      color: #C0392B;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 0.86rem;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .footer-hint {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+    .toast {
+      position: fixed;
+      bottom: 24px; right: 24px;
+      background: var(--text-primary);
+      color: white;
+      padding: 12px 20px;
+      border-radius: var(--radius-sm);
+      font-size: 0.88rem;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+      z-index: 9999;
+      transform: translateY(80px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.error { background: #E07A5F; }
+  </style>
+</head>
+<body>
+<div class="page-wrap">
+  <div class="logo-area">
+    <span class="logo-icon">🌿</span>
+    <div class="logo-title">疗愈日记本</div>
+    <div class="logo-sub">每日复盘，与自己温柔相遇</div>
+  </div>
+
+  <div class="card">
+    <div class="tabs">
+      <div class="tab-btn active" onclick="switchTab('login')">登录</div>
+      <div class="tab-btn" onclick="switchTab('register')">注册</div>
+    </div>
+
+    <div id="errorMsg" class="error-msg"></div>
+
+    <!-- 登录表单 -->
+    <div id="loginForm">
+      <div class="form-group">
+        <label>用户名 / 邮箱</label>
+        <input type="text" id="loginUsername" placeholder="请输入用户名或邮箱">
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" id="loginPassword" placeholder="请输入密码"
+               onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="btn-submit" id="loginBtn" onclick="doLogin()">进入我的日记本 🌸</button>
+      <div class="footer-hint">默认管理员：admin / admin123</div>
+    </div>
+
+    <!-- 注册表单 -->
+    <div id="registerForm" style="display:none">
+      <div class="form-group">
+        <label>用户名</label>
+        <input type="text" id="regUsername" placeholder="给自己取一个名字">
+      </div>
+      <div class="form-group">
+        <label>邮箱</label>
+        <input type="email" id="regEmail" placeholder="your@email.com">
+      </div>
+      <div class="form-group">
+        <label>密码 <span style="font-weight:400;color:var(--text-secondary)">（至少6位）</span></label>
+        <input type="password" id="regPassword" placeholder="设置登录密码">
+      </div>
+      <div class="form-group">
+        <label>确认密码</label>
+        <input type="password" id="regPasswordConfirm" placeholder="再输入一次密码"
+               onkeydown="if(event.key==='Enter')doRegister()">
+      </div>
+      <button class="btn-submit" id="registerBtn" onclick="doRegister()">开始我的疗愈之旅 🌱</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+let currentTab = 'login';
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
+  document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
+  document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register'));
+  });
+  document.getElementById('errorMsg').style.display = 'none';
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+async function doLogin() {
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if (!username || !password) return showError('请填写用户名和密码');
+  
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = '登录中…';
+  
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username, password, remember: true})
+    });
+    const data = await res.json();
+    if (!res.ok) { showError(data.error || '登录失败'); return; }
+    location.href = '/';
+  } catch(e) {
+    showError('网络错误，请稍后重试');
+  } finally {
+    btn.disabled = false; btn.textContent = '进入我的日记本 🌸';
+  }
+}
+
+async function doRegister() {
+  const username = document.getElementById('regUsername').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const password = document.getElementById('regPassword').value;
+  const confirm = document.getElementById('regPasswordConfirm').value;
+  
+  if (!username || !email || !password) return showError('请填写完整信息');
+  if (password !== confirm) return showError('两次密码不一致');
+  if (password.length < 6) return showError('密码不能少于6位');
+  
+  const btn = document.getElementById('registerBtn');
+  btn.disabled = true; btn.textContent = '注册中…';
+  
+  try {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username, email, password})
+    });
+    const data = await res.json();
+    if (!res.ok) { showError(data.error || '注册失败'); return; }
+    location.href = '/';
+  } catch(e) {
+    showError('网络错误，请稍后重试');
+  } finally {
+    btn.disabled = false; btn.textContent = '开始我的疗愈之旅 🌱';
+  }
+}
+</script>
+</body>
+</html>
