@@ -53,6 +53,15 @@
       gap: 8px;
     }
     .navbar-brand .logo { font-size: 1.4rem; }
+    .navbar-page-title {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      padding: 6px 16px;
+      background: rgba(255,181,167,0.12);
+      border-radius: 20px;
+      letter-spacing: 0.02em;
+    }
     .nav-links {
       display: flex;
       align-items: center;
@@ -368,6 +377,9 @@
     <span class="logo">🌿</span>
     <span>疗愈日记本</span>
   </a>
+  <div class="navbar-page-title" id="navbarPageTitle">
+    {% block page_title %}今日复盘{% endblock %}
+  </div>
   <div class="nav-links">
     <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">
       <span>✍️ 今日复盘</span>

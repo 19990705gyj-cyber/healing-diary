@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}历史记录 · 疗愈日记本{% endblock %}
+{% block page_title %}📖 历史记录{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -386,7 +387,8 @@ async function openDetail(dateStr) {
 
     html += `
       <div class="detail-share-bar">
-        <button class="btn btn-primary btn-sm" onclick="shareDetailImage()">🖼️ 导出图片</button>
+        <button class="btn btn-primary btn-sm" onclick="editReview('${dateStr}')">✏️ 编辑</button>
+        <button class="btn btn-ghost btn-sm" onclick="shareDetailImage()">🖼️ 导出图片</button>
         <button class="btn btn-ghost btn-sm" onclick="shareCopyDetailText('${dateStr}')">📋 复制文本</button>
         ${review.is_shared ? `<button class="btn btn-ghost btn-sm" onclick="copyExistingLink('${review.share_token}')">🔗 分享链接</button>` : `<button class="btn btn-ghost btn-sm" onclick="createShare('${dateStr}')">🔗 生成链接</button>`}
       </div>`;
@@ -459,6 +461,12 @@ async function createShare(dateStr) {
 function copyExistingLink(token) {
   const url = location.origin + '/share/' + token;
   navigator.clipboard.writeText(url).then(() => showToast('分享链接已复制 🔗', 'success'));
+}
+
+function editReview(dateStr) {
+  // 跳转到今日复盘页面，带上日期参数
+  closeDetail();
+  location.href = '/?date=' + dateStr;
 }
 
 async function loadFishImagesForDetail(dateStr) {
