@@ -10,3 +10,9 @@ services:
         generateValue: true
       - key: PYTHON_VERSION
         value: 3.11.0
+      - key: DATA_DIR
+        value: /var/data
+    disk:
+      name: healing-diary-data
+      mountPath: /var/data
+      sizeGB: 1

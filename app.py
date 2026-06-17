@@ -8,12 +8,13 @@ from models import db, User, FormField, Review, FishImage
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'healing-community-secret-key-2024')
-# 使用 /tmp 目录存放 SQLite 数据库（Render 免费层只有 /tmp 可写）
-DB_PATH = os.environ.get('DB_PATH', '/tmp/data.db')
+# Render Disk 持久化路径优先；本地开发回退到 /tmp
+DATA_DIR = os.environ.get('DATA_DIR', '/tmp')
+DB_PATH = os.path.join(DATA_DIR, 'data.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_PATH}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 最大上传 16MB
-UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', '/tmp/uploads')
+UPLOAD_FOLDER = os.path.join(DATA_DIR, 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 db.init_app(app)
