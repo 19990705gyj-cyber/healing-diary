@@ -1,6 +1,7 @@
 import os
 import json
 import secrets
+import shutil
 from datetime import datetime, date, timedelta
 from flask import Flask, render_template, request, jsonify, redirect, url_for, abort
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
@@ -208,6 +209,16 @@ def api_register():
     return jsonify({'success': True, 'user': user.to_dict()})
 
 
+@app.route('/api/auth/check-username', methods=['GET'])
+def api_check_username():
+    """检查用户名是否已存在"""
+    username = request.args.get('username', '').strip()
+    if not username or len(username) < 2:
+        return jsonify({'exists': False, 'error': '用户名至少2个字符'})
+    exists = User.query.filter_by(username=username).first() is not None
+    return jsonify({'exists': exists})
+
+
 @app.route('/api/auth/login', methods=['POST'])
 def api_login():
     data = request.get_json()
@@ -372,6 +383,49 @@ def api_save_today_review():
     return jsonify(review.to_dict())
 
 
+# ── 按日期获取/保存复盘（支持编辑历史日期）──
+@app.route('/api/reviews/<string:date_str>', methods=['GET'])
+@login_required
+def api_get_review_by_date(date_str):
+    try:
+        d = date.fromisoformat(date_str)
+    except ValueError:
+        return jsonify({'error': '日期格式错误'}), 400
+    # 不能查看未来日期
+    if d > date.today():
+        return jsonify({'error': '不能查看未来日期'}), 400
+    review = Review.query.filter_by(user_id=current_user.id, review_date=d).first()
+    if review:
+        return jsonify(review.to_dict())
+    return jsonify(None)
+
+
+@app.route('/api/reviews/<string:date_str>', methods=['POST'])
+@login_required
+def api_save_review_by_date(date_str):
+    try:
+        d = date.fromisoformat(date_str)
+    except ValueError:
+        return jsonify({'error': '日期格式错误'}), 400
+    if d > date.today():
+        return jsonify({'error': '不能保存未来日期'}), 400
+
+    data = request.get_json()
+    content = data.get('content', {})
+
+    review = Review.query.filter_by(user_id=current_user.id, review_date=d).first()
+    if review:
+        review.set_content(content)
+        review.updated_at = datetime.utcnow()
+    else:
+        review = Review(user_id=current_user.id, review_date=d)
+        review.set_content(content)
+        db.session.add(review)
+
+    db.session.commit()
+    return jsonify(review.to_dict())
+
+
 @app.route('/api/reviews/history')
 @login_required
 def api_get_history():
@@ -395,19 +449,6 @@ def api_get_history():
         'pages': paginated.pages,
         'page': page
     })
-
-
-@app.route('/api/reviews/<string:date_str>')
-@login_required
-def api_get_review_by_date(date_str):
-    try:
-        d = date.fromisoformat(date_str)
-    except ValueError:
-        return jsonify({'error': '日期格式错误'}), 400
-    review = Review.query.filter_by(user_id=current_user.id, review_date=d).first()
-    if not review:
-        return jsonify(None)
-    return jsonify(review.to_dict())
 
 
 @app.route('/api/reviews/weekly-stats')
@@ -573,7 +614,8 @@ def api_admin_stats():
         'recent_users': [
             {**u.to_dict(), 'last_review': str(lr) if lr else None}
             for u, lr in recent_users
-        ]
+        ],
+        'disk': get_disk_usage()
     })
 
 
@@ -666,6 +708,65 @@ def api_get_fish_images():
     return jsonify([img.to_dict() for img in images])
 
 
+@app.route('/api/reviews/<string:date_str>/fish-images', methods=['POST'])
+@login_required
+def api_upload_fish_images_by_date(date_str):
+    try:
+        d = date.fromisoformat(date_str)
+    except ValueError:
+        return jsonify({'error': '日期格式错误'}), 400
+    if d > date.today():
+        return jsonify({'error': '不能为未来日期上传图片'}), 400
+
+    review = Review.query.filter_by(user_id=current_user.id, review_date=d).first()
+    if not review:
+        review = Review(user_id=current_user.id, review_date=d)
+        review.set_content({})
+        db.session.add(review)
+        db.session.flush()
+
+    caption = request.form.get('caption', '').strip()
+    if 'image' not in request.files:
+        return jsonify({'error': '请上传图片'}), 400
+    file = request.files['image']
+    if file.filename == '':
+        return jsonify({'error': '请选择图片'}), 400
+
+    allowed_ext = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'}
+    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+    if ext not in allowed_ext:
+        return jsonify({'error': f'不支持的图片格式: .{ext}'}), 400
+
+    import uuid
+    safe_name = f"{uuid.uuid4().hex}.{ext}"
+    save_path = os.path.join(UPLOAD_FOLDER, safe_name)
+    file.save(save_path)
+
+    fish_img = FishImage(review_id=review.id, filename=safe_name, caption=caption if caption else None)
+    db.session.add(fish_img)
+    db.session.commit()
+    return jsonify(fish_img.to_dict()), 201
+
+
+@app.route('/api/reviews/<string:date_str>/fish-images/<int:img_id>', methods=['DELETE'])
+@login_required
+def api_delete_fish_image_by_date(date_str, img_id):
+    try:
+        d = date.fromisoformat(date_str)
+    except ValueError:
+        return jsonify({'error': '日期格式错误'}), 400
+    review = Review.query.filter_by(user_id=current_user.id, review_date=d).first()
+    if not review:
+        return jsonify({'error': '无该日复盘'}), 400
+    img = FishImage.query.filter_by(id=img_id, review_id=review.id).first_or_404()
+    path = os.path.join(UPLOAD_FOLDER, img.filename)
+    if os.path.exists(path):
+        os.remove(path)
+    db.session.delete(img)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
 @app.route('/api/reviews/<string:date_str>/fish-images', methods=['GET'])
 @login_required
 def api_get_fish_images_by_date(date_str):
@@ -706,6 +807,76 @@ def api_delete_fish_image(img_id):
     db.session.delete(img)
     db.session.commit()
     return jsonify({'success': True})
+
+
+# ─────────────────────────────────────────
+# 磁盘使用统计工具函数
+# ─────────────────────────────────────────
+def get_disk_usage():
+    """获取磁盘使用情况（用于管理员后台展示 Render Disk 1GB 限额）"""
+    data_dir = os.environ.get('DATA_DIR', '/tmp')
+    total_limit = 1 * 1024 * 1024 * 1024  # 1GB (Render 免费 Disk 限额)
+
+    # 统计数据目录实际使用量
+    used_bytes = 0
+    db_size = 0
+    uploads_size = 0
+    uploads_count = 0
+
+    # 数据库文件大小
+    db_path = os.path.join(data_dir, 'data.db')
+    if os.path.exists(db_path):
+        db_size = os.path.getsize(db_path)
+        used_bytes += db_size
+
+    # 上传文件大小
+    uploads_dir = os.path.join(data_dir, 'uploads')
+    if os.path.exists(uploads_dir):
+        for dirpath, dirnames, filenames in os.walk(uploads_dir):
+            for fn in filenames:
+                fp = os.path.join(dirpath, fn)
+                try:
+                    uploads_size += os.path.getsize(fp)
+                    uploads_count += 1
+                except OSError:
+                    pass
+    used_bytes += uploads_size
+
+    # 系统级磁盘信息（尝试获取挂载点信息）
+    try:
+        stat = shutil.disk_usage(data_dir)
+        disk_total = stat.total
+        disk_free = stat.free
+        disk_used = stat.used
+    except Exception:
+        disk_total = total_limit
+        disk_free = max(0, total_limit - used_bytes)
+        disk_used = used_bytes
+
+    def fmt(size):
+        if size < 1024:
+            return f"{size} B"
+        elif size < 1024 * 1024:
+            return f"{size / 1024:.1f} KB"
+        else:
+            return f"{size / (1024 * 1024):.1f} MB"
+
+    return {
+        'used_bytes': used_bytes,
+        'used_display': fmt(used_bytes),
+        'db_size': db_size,
+        'db_display': fmt(db_size),
+        'uploads_size': uploads_size,
+        'uploads_display': fmt(uploads_size),
+        'uploads_count': uploads_count,
+        'total_limit': total_limit,
+        'total_limit_display': '1 GB',
+        'free_bytes': disk_free,
+        'free_display': fmt(disk_free),
+        'usage_percent': round(used_bytes / total_limit * 100, 1),
+        'disk_total': disk_total,
+        'disk_total_display': fmt(disk_total),
+    }
 
 
 if __name__ == '__main__':

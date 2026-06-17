@@ -37,7 +37,7 @@
     }
 
     .share-card {
-      max-width: 540px;
+      max-width: 560px;
       margin: 0 auto;
       background: white;
       border-radius: var(--radius);
@@ -46,86 +46,167 @@
       border: 1px solid var(--border);
     }
 
-    /* 卡头 */
+    /* ── 卡头 ── */
     .card-top {
       background: linear-gradient(135deg, #FFF0ED 0%, #F0EBFA 100%);
-      padding: 28px 32px 24px;
+      padding: 32px 32px 28px;
       text-align: center;
+      position: relative;
+    }
+    .card-top::after {
+      content: '';
+      position: absolute; bottom: 0; left: 20%; right: 20%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #E8D5C8, transparent);
     }
     .user-avatar {
-      width: 56px; height: 56px;
+      width: 60px; height: 60px;
       border-radius: 50%;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.4rem;
+      font-size: 1.5rem;
       font-weight: 700;
       color: white;
       margin-bottom: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
-    .user-name { font-size: 1.1rem; font-weight: 700; color: var(--text-primary); }
-    .share-date { font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px; }
+    .user-name { font-size: 1.15rem; font-weight: 700; color: var(--text-primary); }
+    .share-date { font-size: 0.85rem; color: var(--text-secondary); margin-top: 6px; }
 
-    /* 字段内容 */
-    .card-body { padding: 24px 32px; }
-    .field-block { margin-bottom: 22px; }
-    .field-block:last-child { margin-bottom: 0; }
+    /* ── 卡体 ── */
+    .card-body { padding: 28px 32px 8px; }
+
+    .field-block {
+      margin-bottom: 24px;
+      padding: 16px 18px;
+      background: #FEFCFA;
+      border-radius: 12px;
+      border-left: 3px solid var(--primary);
+      transition: border-color 0.2s;
+    }
+    .field-block.type-mood_picker { border-left-color: #F7C5D0; }
+    .field-block.type-rating { border-left-color: #FFD9A0; }
+    .field-block.type-textarea { border-left-color: #C3B1E1; }
+    .field-block.type-single_choice { border-left-color: #B7E1CD; }
+    .field-block.type-fish { border-left-color: #A8D8EA; background: #F5FAFD; }
+
     .field-label {
       font-size: 0.75rem;
       font-weight: 700;
       color: var(--text-secondary);
       text-transform: uppercase;
       letter-spacing: 0.06em;
-      margin-bottom: 7px;
+      margin-bottom: 8px;
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
     }
     .field-value {
       font-size: 0.95rem;
       color: var(--text-primary);
-      line-height: 1.7;
+      line-height: 1.8;
       white-space: pre-wrap;
     }
     .field-value.mood-display {
-      font-size: 1.15rem;
+      font-size: 1.2rem;
+      font-weight: 600;
     }
+
+    /* ── 评分 ── */
     .rating-display {
       display: flex;
-      gap: 5px;
+      gap: 6px;
       align-items: center;
+      flex-wrap: wrap;
     }
-    .rating-display .dot {
-      width: 12px; height: 12px;
-      border-radius: 50%;
-      background: var(--border);
+    .rating-display .star {
+      font-size: 1.3rem;
+      opacity: 0.25;
+      transition: opacity 0.2s;
     }
-    .rating-display .dot.filled { background: var(--primary); }
+    .rating-display .star.filled { opacity: 1; }
+    .rating-score {
+      margin-left: 8px;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--primary-dark);
+    }
 
-    /* 底部 */
+    /* ── 选择标签 ── */
+    .choice-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .choice-tag {
+      display: inline-block;
+      padding: 4px 12px;
+      background: #FFF0ED;
+      color: var(--primary-dark);
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    /* ── 摸鱼图片 ── */
+    .fish-gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 10px;
+    }
+    .fish-gallery .fish-item {
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: white;
+    }
+    .fish-gallery .fish-item img {
+      width: 100%;
+      display: block;
+      object-fit: cover;
+      aspect-ratio: 4/3;
+    }
+    .fish-gallery .fish-item .fish-cap {
+      padding: 6px 10px;
+      font-size: 0.74rem;
+      color: var(--text-secondary);
+      background: #FAFAFA;
+      line-height: 1.4;
+    }
+
+    /* ── 底部 ── */
     .card-footer {
       background: var(--bg-warm);
-      padding: 16px 32px;
+      padding: 20px 32px;
       text-align: center;
       border-top: 1px solid var(--border);
+      margin-top: 8px;
     }
-    .footer-cta {
-      font-size: 0.85rem;
+    .card-footer .tagline {
+      font-size: 0.82rem;
       color: var(--text-secondary);
+      line-height: 1.6;
     }
-    .footer-cta a {
+    .card-footer .tagline a {
       color: var(--primary-dark);
       text-decoration: none;
       font-weight: 600;
     }
+    .card-footer .brand {
+      font-size: 0.74rem;
+      color: #C5B5A5;
+      margin-top: 8px;
+    }
 
-    /* 分享操作 */
+    /* ── 操作按钮 ── */
     .share-actions {
-      max-width: 540px;
+      max-width: 560px;
       margin: 20px auto 0;
       display: flex;
       gap: 10px;
       justify-content: center;
+      flex-wrap: wrap;
     }
     .btn {
       padding: 10px 20px;
@@ -135,12 +216,12 @@
       cursor: pointer;
       border: none;
       transition: all 0.2s;
+      font-family: inherit;
     }
     .btn:hover { transform: translateY(-1px); }
-    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(255,181,167,0.4); }
+    .btn-primary:hover { background: var(--primary-dark); }
     .btn-ghost { background: white; color: var(--text-primary); border: 1.5px solid var(--border); }
-
-    .divider { height: 1px; background: var(--border); margin: 16px 0; }
 
     .loading {
       text-align: center;
@@ -173,6 +254,21 @@
     }
     .toast.show { transform: translateY(0); opacity: 1; }
     .toast.success { background: #52B788; }
+
+    /* ── 隐藏的纯排版卡片（用于截图导出） ── */
+    #exportCard {
+      position: absolute; left: -9999px; top: 0;
+      width: 600px;
+      background: white;
+      font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    }
+    #exportCard * { box-sizing: border-box; }
+
+    @media(max-width:480px) {
+      .card-body { padding: 20px 18px 4px; }
+      .card-top { padding: 24px 20px 20px; }
+      .field-block { padding: 12px 14px; }
+    }
   </style>
 </head>
 <body>
@@ -187,15 +283,17 @@
 
   <div class="share-actions" id="shareActions" style="display:none">
     <button class="btn btn-ghost" onclick="copyCurrentUrl()">🔗 复制链接</button>
-    <button class="btn btn-primary" onclick="saveAsImage()">🖼️ 保存图片</button>
+    <button class="btn btn-primary" onclick="saveAsImage()">🖼️ 保存为图片</button>
   </div>
 
   <div id="toast" class="toast"></div>
 
+  <!-- 导出用的隐藏卡片（无交互元素，纯排版） -->
+  <div id="exportCard"></div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 const token = '{{ token }}';
-
 const FIELD_ICONS = {text:'✏️', textarea:'📝', rating:'⭐', mood_picker:'💛', single_choice:'🔘', multi_choice:'☑️', slider:'🎚️'};
 const WEEKDAYS = ['日','一','二','三','四','五','六'];
 
@@ -220,71 +318,174 @@ async function init() {
 function renderShare(data) {
   const { review, fields, fish_images } = data;
   const d = new Date(review.review_date + 'T00:00:00');
-  const dateStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（周${WEEKDAYS[d.getDay()]}）`;
+  const dateStr = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 周${WEEKDAYS[d.getDay()]}`;
   const username = review.username || '匿名';
   const avatarColor = review.avatar_color || '#FFB5A7';
   const content = review.content;
 
   let fieldsHTML = '';
+  let hasContent = false;
+
   fields.forEach(f => {
     const val = content[f.field_key];
     if (val === undefined || val === null || val === '') return;
-    
+    // 跳过多选空数组
+    if (Array.isArray(val) && val.length === 0) return;
+    // 摸鱼环节的文字选项不显示在字段中（用图片区域替代）
+    if (f.field_key === 'fish_mode') return;
+
+    hasContent = true;
     let valueHTML = '';
+    let extraClass = '';
+
     if (f.field_type === 'rating') {
-      const num = Number(val);
-      let dots = '<div class="rating-display">';
-      for (let i=1; i<=10; i++) dots += `<div class="dot ${i<=num?'filled':''}"></div>`;
-      dots += `<span style="margin-left:6px;font-weight:700;color:var(--primary-dark)">${num}/10</span></div>`;
-      valueHTML = dots;
+      const num = Number(val) || 0;
+      let stars = '<div class="rating-display">';
+      for (let i=1; i<=10; i++) {
+        stars += `<span class="star ${i<=num?'filled':''}">★</span>`;
+      }
+      stars += `<span class="rating-score">${num}/10</span></div>`;
+      valueHTML = stars;
+      extraClass = ' type-rating';
     } else if (f.field_type === 'mood_picker') {
       valueHTML = `<div class="field-value mood-display">${escHtml(val)}</div>`;
+      extraClass = ' type-mood_picker';
+    } else if (f.field_type === 'single_choice') {
+      valueHTML = `<div class="choice-tags"><span class="choice-tag">${escHtml(val)}</span></div>`;
+      extraClass = ' type-single_choice';
+    } else if (f.field_type === 'multi_choice' && Array.isArray(val)) {
+      valueHTML = '<div class="choice-tags">' + val.map(v => `<span class="choice-tag">${escHtml(v)}</span>`).join('') + '</div>';
+    } else if (f.field_type === 'textarea') {
+      valueHTML = `<div class="field-value">${escHtml(String(val))}</div>`;
+      extraClass = ' type-textarea';
     } else {
-      const displayVal = Array.isArray(val) ? val.join('、') : String(val);
-      valueHTML = `<div class="field-value">${escHtml(displayVal)}</div>`;
+      valueHTML = `<div class="field-value">${escHtml(Array.isArray(val) ? val.join('、') : String(val))}</div>`;
     }
 
     fieldsHTML += `
-      <div class="field-block">
+      <div class="field-block${extraClass}">
         <div class="field-label">${FIELD_ICONS[f.field_type] || '📌'} ${escHtml(f.label)}</div>
-        ${f.field_type !== 'mood_picker' ? valueHTML : valueHTML}
+        ${valueHTML}
       </div>`;
   });
 
-  document.getElementById('mainArea').innerHTML = `
+  // 摸鱼图片
+  const isFishMode = content['fish_mode'] && content['fish_mode'].includes('🎣');
+  if (isFishMode && fish_images && fish_images.length) {
+    hasContent = true;
+    let imgsHTML = '<div class="fish-gallery">';
+    fish_images.forEach(img => {
+      imgsHTML += `<div class="fish-item">
+        <img src="/api/fish-images/${img.filename}" loading="lazy" onerror="this.parentElement.style.display='none'">
+        ${img.caption ? `<div class="fish-cap">${escHtml(img.caption)}</div>` : ''}
+      </div>`;
+    });
+    imgsHTML += '</div>';
+    fieldsHTML += `
+      <div class="field-block type-fish">
+        <div class="field-label">🎣 摸鱼晒图</div>
+        ${imgsHTML}
+      </div>`;
+  }
+
+  if (!hasContent) {
+    fieldsHTML = '<p style="color:var(--text-secondary);font-size:.9rem;text-align:center;padding:20px 0">📭 今天还没有记录内容</p>';
+  }
+
+  const cardHTML = `
     <div class="share-card" id="shareCard">
       <div class="card-top">
         <div class="user-avatar" style="background:${avatarColor}">${username[0].toUpperCase()}</div>
-        <div class="user-name">${escHtml(username)}</div>
+        <div class="user-name">${escHtml(username)} 的疗愈日记</div>
         <div class="share-date">📅 ${dateStr}</div>
       </div>
-      <div class="card-body" id="cardBody">
-        ${fieldsHTML || '<p style="color:var(--text-secondary);font-size:.9rem;text-align:center">暂无内容</p>'}
+      <div class="card-body">
+        ${fieldsHTML}
       </div>
       <div class="card-footer">
-        <div class="footer-cta">✍️ 想要记录自己的疗愈日记？<a href="/login">来加入我们</a></div>
+        <div class="tagline">✍️ 想要记录自己的疗愈日记？<a href="/login">来加入我们</a></div>
+        <div class="brand">🌿 疗愈日记本 · Healing Diary</div>
       </div>
     </div>`;
 
-  // 摸鱼环节：加载图片
-  const isFishMode = review.content['fish_mode'] && review.content['fish_mode'].includes('🎣');
-  if (isFishMode && fish_images && fish_images.length) {
-    const cardBody = document.getElementById('cardBody');
-    let imgsHTML = '<div class="field-block"><div class="field-label">🎣 摸鱼图片</div><div style="display:flex;flex-wrap:wrap;gap:8px">';
-    fish_images.forEach(img => {
-      imgsHTML += `<div style="border-radius:8px;overflow:hidden;border:1px solid #F0E6DF;max-width:200px">
-        <img src="/api/fish-images/${img.filename}" style="width:100%;display:block" loading="lazy">
-        ${img.caption ? `<div style="padding:6px 10px;font-size:.75rem;color:#9B8579">${escHtml(img.caption)}</div>` : ''}
-      </div>`;
-    });
-    imgsHTML += '</div></div>';
-    cardBody.innerHTML += imgsHTML;
-  }
+  document.getElementById('mainArea').innerHTML = cardHTML;
+
+  // 同时生成导出卡片（纯排版，用于截图）
+  buildExportCard(data, username, avatarColor, dateStr, fields, fish_images, isFishMode);
 }
 
-async function loadShareFishImages(review) {
-  // 已合并到 renderShare 中处理
-}
+function buildExportCard(data, username, avatarColor, dateStr, fields, fish_images, isFishMode) {
+  const content = data.review.content;
+
+  let exportHTML = `
+    <div style="padding:36px 32px 28px;text-align:center;background:linear-gradient(135deg,#FFF0ED,#F0EBFA);border-bottom:1px solid #F0E6DF">
+      <div style="width:60px;height:60px;border-radius:50%;background:${avatarColor};display:inline-flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;color:white;margin-bottom:12px">${username[0].toUpperCase()}</div>
+      <div style="font-size:1.15rem;font-weight:700;color:#5C4A3A">${escHtml(username)} 的疗愈日记</div>
+      <div style="font-size:.85rem;color:#9B8579;margin-top:6px">📅 ${dateStr}</div>
+    </div>
+    <div style="padding:28px 32px 12px">`;
+
+  fields.forEach(f => {
+    const val = content[f.field_key];
+    if (val === undefined || val === null || val === '') return;
+    if (Array.isArray(val) && val.length === 0) return;
+    if (f.field_key === 'fish_mode') return;
+
+    let valueHTML = '';
+    let borderColor = '#FFB5A7';
+
+    if (f.field_type === 'rating') {
+      const num = Number(val) || 0;
+      valueHTML = '<div style="display:flex;gap:4px;align-items:center">';
+      for (let i=1; i<=10; i++) {
+        valueHTML += `<span style="font-size:1.2rem;opacity:${i<=num?1:0.25}">★</span>`;
+      }
+      valueHTML += `<span style="margin-left:8px;font-weight:700;font-size:1.1rem;color:#F59080">${num}/10</span></div>`;
+      borderColor = '#FFD9A0';
+    } else if (f.field_type === 'mood_picker') {
+      valueHTML = `<div style="font-size:1.2rem;font-weight:600;color:#5C4A3A">${escHtml(val)}</div>`;
+      borderColor = '#F7C5D0';
+    } else if (f.field_type === 'single_choice') {
+      valueHTML = `<span style="display:inline-block;padding:4px 12px;background:#FFF0ED;color:#F59080;border-radius:20px;font-size:.85rem;font-weight:500">${escHtml(val)}</span>`;
+      borderColor = '#B7E1CD';
+    } else if (f.field_type === 'multi_choice' && Array.isArray(val)) {
+      valueHTML = val.map(v => `<span style="display:inline-block;padding:4px 12px;background:#FFF0ED;color:#F59080;border-radius:20px;font-size:.85rem;font-weight:500;margin-right:6px;margin-bottom:4px">${escHtml(v)}</span>`).join('');
+    } else if (f.field_type === 'textarea') {
+      valueHTML = `<div style="font-size:.95rem;color:#5C4A3A;line-height:1.8;white-space:pre-wrap">${escHtml(String(val))}</div>`;
+      borderColor = '#C3B1E1';
+    } else {
+      valueHTML = `<div style="font-size:.95rem;color:#5C4A3A">${escHtml(Array.isArray(val)?val.join('、'):String(val))}</div>`;
+    }
+
+    exportHTML += `
+      <div style="margin-bottom:20px;padding:14px 16px;background:#FEFCFA;border-radius:12px;border-left:3px solid ${borderColor}">
+        <div style="font-size:.75rem;font-weight:700;color:#9B8579;margin-bottom:8px;letter-spacing:.05em">${FIELD_ICONS[f.field_type]||'📌'} ${escHtml(f.label)}</div>
+        ${valueHTML}
+      </div>`;
+  });
+
+  // 摸鱼图片
+  if (isFishMode && fish_images && fish_images.length) {
+    exportHTML += `
+      <div style="margin-bottom:20px;padding:14px 16px;background:#F5FAFD;border-radius:12px;border-left:3px solid #A8D8EA">
+        <div style="font-size:.75rem;font-weight:700;color:#9B8579;margin-bottom:10px;letter-spacing:.05em">🎣 摸鱼晒图</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">`;
+    fish_images.forEach(img => {
+      exportHTML += `<div style="border-radius:8px;overflow:hidden;border:1px solid #F0E6DF;max-width:180px;background:white">
+        <img src="/api/fish-images/${img.filename}" style="width:100%;display:block" crossorigin="anonymous">
+        ${img.caption ? `<div style="padding:6px 10px;font-size:.72rem;color:#9B8579">${escHtml(img.caption)}</div>` : ''}
+      </div>`;
+    });
+    exportHTML += `</div></div>`;
+  }
+
+  exportHTML += `</div>
+    <div style="background:#FFF9F5;padding:20px 32px;text-align:center;border-top:1px solid #F0E6DF">
+      <div style="font-size:.82rem;color:#9B8579">✍️ 想要记录自己的疗愈日记？来加入我们</div>
+      <div style="font-size:.72rem;color:#C5B5A5;margin-top:6px">🌿 疗愈日记本 · Healing Diary</div>
+    </div>`;
+
+  document.getElementById('exportCard').innerHTML = exportHTML;
 }
 
 function copyCurrentUrl() {
@@ -292,15 +493,44 @@ function copyCurrentUrl() {
 }
 
 async function saveAsImage() {
-  const card = document.getElementById('shareCard');
+  const card = document.getElementById('exportCard');
   if (!card) return;
   showToast('正在生成图片…');
-  const canvas = await html2canvas(card, {scale:2, backgroundColor:'#FFFFFF', useCORS:true});
-  const link = document.createElement('a');
-  link.download = `疗愈复盘分享.png`;
-  link.href = canvas.toDataURL('image/png');
-  link.click();
-  showToast('图片已保存 🖼️', 'success');
+  try {
+    // 短暂显示导出卡片以便 html2canvas 渲染
+    card.style.position = 'fixed';
+    card.style.left = '0';
+    card.style.top = '0';
+    card.style.zIndex = '-1';
+    card.style.opacity = '1';
+    
+    await new Promise(r => setTimeout(r, 300));
+    
+    const canvas = await html2canvas(card, {
+      scale: 2,
+      backgroundColor: '#FFFFFF',
+      useCORS: true,
+      allowTaint: true,
+      logging: false
+    });
+    
+    // 隐藏回去
+    card.style.position = 'absolute';
+    card.style.left = '-9999px';
+    card.style.top = '0';
+    card.style.zIndex = '';
+    card.style.opacity = '';
+    
+    const link = document.createElement('a');
+    link.download = `疗愈复盘分享.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showToast('图片已保存 🖼️', 'success');
+  } catch(e) {
+    card.style.position = 'absolute';
+    card.style.left = '-9999px';
+    showToast('生成失败：' + e.message, 'error');
+  }
 }
 
 function showToast(msg, type='') {

@@ -34,6 +34,25 @@
 
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 
+  /* 磁盘使用卡片 */
+  .disk-card { margin-bottom: 24px; }
+  .disk-card .card { padding: 24px 28px; }
+  .disk-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .disk-header .title { font-size: 1rem; font-weight: 700; color: var(--text-primary); }
+  .disk-header .badge { font-size: .76rem; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+  .disk-header .badge.ok { background: #E8F5E9; color: #2E7D32; }
+  .disk-header .badge.warn { background: #FFF3E0; color: #E65100; }
+  .disk-header .badge.danger { background: #FFEBEE; color: #C62828; }
+  .disk-bar-wrap { height: 20px; background: #F0E6DF; border-radius: 10px; overflow: hidden; margin-bottom: 12px; }
+  .disk-bar-fill { height: 100%; border-radius: 10px; transition: width 0.5s ease; }
+  .disk-bar-fill.ok { background: linear-gradient(90deg, #52B788, #40916C); }
+  .disk-bar-fill.warn { background: linear-gradient(90deg, #FFB74D, #F57C00); }
+  .disk-bar-fill.danger { background: linear-gradient(90deg, #EF5350, #C62828); }
+  .disk-details { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; text-align: center; }
+  .disk-detail-item .val { font-size: 1.1rem; font-weight: 700; color: var(--text-primary); }
+  .disk-detail-item .lbl { font-size: .74rem; color: var(--text-secondary); margin-top: 2px; }
+  @media(max-width:600px) { .disk-details { grid-template-columns: repeat(2, 1fr); } }
+
   /* 用户列表 */
   .user-table { width: 100%; border-collapse: collapse; }
   .user-table th {
@@ -129,6 +148,25 @@
     <div class="stat-box"><div class="icon">🗓️</div><div class="num" id="stat-week">…</div><div class="label">本周打卡</div></div>
   </div>
 
+  <!-- 磁盘使用情况 -->
+  <div class="disk-card">
+    <div class="card">
+      <div class="disk-header">
+        <div class="title">💾 存储空间（Render Disk · 1GB 免费额度）</div>
+        <div class="badge ok" id="diskBadge">良好</div>
+      </div>
+      <div class="disk-bar-wrap">
+        <div class="disk-bar-fill ok" id="diskBar" style="width:0%"></div>
+      </div>
+      <div class="disk-details" id="diskDetails">
+        <div class="disk-detail-item"><div class="val">…</div><div class="lbl">已使用</div></div>
+        <div class="disk-detail-item"><div class="val">…</div><div class="lbl">剩余空间</div></div>
+        <div class="disk-detail-item"><div class="val">…</div><div class="lbl">数据库</div></div>
+        <div class="disk-detail-item"><div class="val">…</div><div class="lbl">上传文件</div></div>
+      </div>
+    </div>
+  </div>
+
   <div class="grid-2">
     <!-- 近7天打卡趋势 -->
     <div class="card">
@@ -192,6 +230,11 @@ async function init() {
 
     // 用户列表
     renderUserList(stats.recent_users);
+
+    // 磁盘使用情况
+    if (stats.disk) {
+      renderDiskUsage(stats.disk);
+    }
   } catch(e) {
     showToast('加载统计数据失败', 'error');
   }
@@ -246,6 +289,31 @@ async function toggleUser(uid) {
 function escHtml(str) {
   if (!str) return '';
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderDiskUsage(disk) {
+  const pct = disk.usage_percent;
+  const bar = document.getElementById('diskBar');
+  const badge = document.getElementById('diskBadge');
+  
+  bar.style.width = pct + '%';
+  
+  let level = 'ok';
+  if (pct > 80) level = 'danger';
+  else if (pct > 60) level = 'warn';
+  
+  bar.className = 'disk-bar-fill ' + level;
+  badge.className = 'badge ' + level;
+  
+  const labels = { ok: '良好', warn: '注意', danger: '紧张' };
+  badge.textContent = labels[level] + ' · ' + pct + '%';
+  
+  document.getElementById('diskDetails').innerHTML = `
+    <div class="disk-detail-item"><div class="val">${disk.used_display}</div><div class="lbl">已使用</div></div>
+    <div class="disk-detail-item"><div class="val">${disk.free_display}</div><div class="lbl">剩余空间</div></div>
+    <div class="disk-detail-item"><div class="val">${disk.db_display}</div><div class="lbl">数据库</div></div>
+    <div class="disk-detail-item"><div class="val">${disk.uploads_display} / ${disk.uploads_count}个</div><div class="lbl">上传文件</div></div>
+  `;
 }
 
 init();

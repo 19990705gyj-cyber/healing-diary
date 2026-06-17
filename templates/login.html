@@ -200,7 +200,8 @@
     <div id="registerForm" style="display:none">
       <div class="form-group">
         <label>用户名</label>
-        <input type="text" id="regUsername" placeholder="给自己取一个名字">
+        <input type="text" id="regUsername" placeholder="给自己取一个名字" onblur="checkUsername()">
+        <div id="usernameHint" style="font-size:.76rem;margin-top:4px;display:none"></div>
       </div>
       <div class="form-group">
         <label>密码 <span style="font-weight:400;color:var(--text-secondary)">（至少6位）</span></label>
@@ -290,6 +291,36 @@ async function doRegister() {
   } finally {
     btn.disabled = false; btn.textContent = '开始我的疗愈之旅 🌱';
   }
+}
+
+let checkTimer = null;
+async function checkUsername() {
+  const username = document.getElementById('regUsername').value.trim();
+  const hint = document.getElementById('usernameHint');
+  if (!username) { hint.style.display = 'none'; return; }
+  if (username.length < 2) {
+    hint.style.display = 'block'; hint.style.color = '#E07A5F';
+    hint.textContent = '用户名至少2个字符';
+    return;
+  }
+  // 防抖
+  clearTimeout(checkTimer);
+  checkTimer = setTimeout(async () => {
+    try {
+      const res = await fetch(`/api/auth/check-username?username=${encodeURIComponent(username)}`);
+      const data = await res.json();
+      hint.style.display = 'block';
+      if (data.exists) {
+        hint.style.color = '#E07A5F';
+        hint.textContent = '❌ 该用户名已被使用，请换一个';
+      } else {
+        hint.style.color = '#4CAF50';
+        hint.textContent = '✅ 该用户名可用';
+      }
+    } catch(e) {
+      hint.style.display = 'none';
+    }
+  }, 400);
 }
 </script>
 </body>

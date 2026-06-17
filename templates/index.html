@@ -222,6 +222,13 @@
     <div class="date-big" id="dateDisplay"></div>
     <div class="date-sub" id="dateSubDisplay"></div>
     <div class="date-quote" id="dailyQuote">🌿 今天，好好感受自己</div>
+    <!-- 日期导航：可切换编辑历史日期 -->
+    <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:10px">
+      <button onclick="goDate(-1)" style="background:none;border:none;font-size:1.2rem;cursor:pointer;padding:4px 8px;border-radius:6px;color:#9B8579" title="前一天">◀</button>
+      <span id="dateNavLabel" style="font-size:.82rem;color:#9B8579;font-weight:500;min-width:100px;text-align:center"></span>
+      <button onclick="goDate(1)" style="background:none;border:none;font-size:1.2rem;cursor:pointer;padding:4px 8px;border-radius:6px;color:#9B8579" title="后一天">▶</button>
+      <button onclick="goDate(0)" style="background:none;border:none;font-size:.82rem;cursor:pointer;padding:4px 12px;border-radius:20px;border:1px solid #E8D5C8;color:#9B8579;font-weight:500" title="回到今天">今天</button>
+    </div>
   </div>
 
   <!-- 表单区域 -->
@@ -294,6 +301,9 @@
   </div>
 </div>
 
+<!-- 隐藏的分享导出卡片（纯排版，用于截图导出） -->
+<div id="shareExportCard" style="position:fixed;left:-9999px;top:0;width:600px;background:white;font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif"></div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -316,31 +326,72 @@ const QUOTES = [
 ];
 
 const WEEKDAYS = ['周日','周一','周二','周三','周四','周五','周六'];
+const FIELD_ICONS = {text:'✏️', textarea:'📝', rating:'⭐', mood_picker:'💛', single_choice:'🔘', multi_choice:'☑️', slider:'🎚️'};
+
+let reviewDate = null; // 当前编辑的日期 (YYYY-MM-DD)，null=今天
 
 async function init() {
   const now = new Date();
   todayStr = now.toISOString().split('T')[0];
+  // 检查 URL 参数中是否有指定日期
+  const params = new URLSearchParams(location.search);
+  const dateParam = params.get('date');
+  if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+    reviewDate = dateParam;
+  } else {
+    reviewDate = null;
+  }
+  await loadDate();
+}
+
+async function loadDate() {
+  const d = reviewDate ? new Date(reviewDate + 'T00:00:00') : new Date();
+  const dateStr = reviewDate || todayStr;
+  const isToday = !reviewDate || reviewDate === todayStr;
+  
   const dateEl = document.getElementById('dateDisplay');
   const subEl = document.getElementById('dateSubDisplay');
   const quoteEl = document.getElementById('dailyQuote');
+  const navLabel = document.getElementById('dateNavLabel');
   
-  dateEl.textContent = `${now.getMonth()+1}月${now.getDate()}日`;
-  subEl.textContent = `${now.getFullYear()}年 · ${WEEKDAYS[now.getDay()]}`;
-  quoteEl.textContent = QUOTES[now.getDay()];
+  dateEl.textContent = `${d.getMonth()+1}月${d.getDate()}日`;
+  subEl.textContent = `${d.getFullYear()}年 · ${WEEKDAYS[d.getDay()]}`;
+  quoteEl.textContent = QUOTES[d.getDay()];
+  navLabel.textContent = isToday ? '📌 今天' : `📅 ${d.getMonth()+1}/${d.getDate()}`;
 
   try {
     [fields, todayReview] = await Promise.all([
       apiFetch('/api/fields'),
-      apiFetch('/api/reviews/today')
+      apiFetch(`/api/reviews/${dateStr}`)
     ]);
     renderForm();
-    // 初始化完成后检查摸鱼模式状态
     if (formValues['fish_mode'] && formValues['fish_mode'].includes('🎣')) {
       toggleFishMode();
     }
   } catch(e) {
     document.getElementById('formArea').innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><p>加载失败，请刷新重试</p></div>`;
   }
+}
+
+function goDate(offset) {
+  if (offset === 0) {
+    reviewDate = null;
+  } else {
+    const d = reviewDate ? new Date(reviewDate + 'T00:00:00') : new Date();
+    d.setDate(d.getDate() + offset);
+    // 不能超过今天
+    const today = new Date();
+    today.setHours(23,59,59,999);
+    if (d > today) return;
+    reviewDate = d.toISOString().split('T')[0];
+    if (reviewDate === todayStr) reviewDate = null;
+  }
+  // 更新 URL
+  const url = new URL(location.href);
+  if (reviewDate) url.searchParams.set('date', reviewDate);
+  else url.searchParams.delete('date');
+  history.replaceState(null, '', url.toString());
+  loadDate();
 }
 
 function renderForm() {
@@ -603,7 +654,8 @@ async function handleFishFiles(files) {
     formData.append('image', file);
     formData.append('caption', caption);
     try {
-      const res = await fetch('/api/reviews/today/fish-images', { method: 'POST', body: formData });
+      const dateStr = reviewDate || todayStr;
+      const res = await fetch(`/api/reviews/${dateStr}/fish-images`, { method: 'POST', body: formData });
       if (res.ok) {
         successCount++;
       } else {
@@ -641,7 +693,8 @@ async function loadFishImages() {
   const badge = document.getElementById('fishRequiredBadge');
   if (!list) return;
   try {
-    const images = await apiFetch('/api/reviews/today/fish-images');
+    const dateStr = reviewDate || todayStr;
+    const images = await apiFetch(`/api/reviews/${dateStr}/fish-images`);
     if (images.length === 0) {
       list.innerHTML = '';
       if (badge) badge.style.display = 'block';
@@ -662,7 +715,8 @@ async function loadFishImages() {
 
 async function deleteFishImage(id) {
   try {
-    await apiFetch(`/api/reviews/today/fish-images/${id}`, { method: 'DELETE' });
+    const dateStr = reviewDate || todayStr;
+    await apiFetch(`/api/reviews/${dateStr}/fish-images/${id}`, { method: 'DELETE' });
     loadFishImages();
   } catch(e) {
     showToast('删除失败', 'error');
@@ -710,8 +764,11 @@ async function saveReview() {
   btn.disabled = true;
   btn.textContent = '保存中…';
 
+  const dateStr = reviewDate || todayStr;
+  const apiPath = reviewDate ? `/api/reviews/${dateStr}` : '/api/reviews/today';
+
   try {
-    todayReview = await apiFetch('/api/reviews/today', {
+    todayReview = await apiFetch(apiPath, {
       method: 'POST',
       body: JSON.stringify({content: formValues})
     });
@@ -741,7 +798,8 @@ function closeShareModal(e) {
 
 async function shareLink() {
   try {
-    const data = await apiFetch(`/api/reviews/${todayStr}/share`, {method:'POST'});
+    const dateStr = reviewDate || todayStr;
+    const data = await apiFetch(`/api/reviews/${dateStr}/share`, {method:'POST'});
     const url = location.origin + data.share_url;
     document.getElementById('shareLinkInput').value = url;
     document.getElementById('shareLinkArea').style.display = 'block';
@@ -759,14 +817,24 @@ async function shareImage() {
   closeShareModal();
   showToast('正在生成图片…');
   try {
-    const el = document.getElementById('formArea');
-    const canvas = await html2canvas(el, {scale: 2, backgroundColor: '#FFF9F5', useCORS: true});
+    await buildExportCard();
+    const el = document.getElementById('shareExportCard');
+    el.style.left = '0';
+    el.style.zIndex = '-1';
+    await new Promise(r => setTimeout(r, 400));
+    
+    const canvas = await html2canvas(el, {scale: 2, backgroundColor: '#FFFFFF', useCORS: true, allowTaint: true, logging: false});
+    
+    el.style.left = '-9999px';
+    el.style.zIndex = '';
+    
     const link = document.createElement('a');
     link.download = `疗愈复盘_${todayStr}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
     showToast('图片已保存 🖼️', 'success');
   } catch(e) {
+    document.getElementById('shareExportCard').style.left = '-9999px';
     showToast('生成失败：' + e.message, 'error');
   }
 }
@@ -775,17 +843,112 @@ async function sharePDF() {
   closeShareModal();
   showToast('正在生成PDF…');
   try {
-    const el = document.getElementById('formArea');
-    const canvas = await html2canvas(el, {scale: 2, backgroundColor: '#FFF9F5', useCORS: true});
+    await buildExportCard();
+    const el = document.getElementById('shareExportCard');
+    el.style.left = '0';
+    el.style.zIndex = '-1';
+    await new Promise(r => setTimeout(r, 400));
+    
+    const canvas = await html2canvas(el, {scale: 2, backgroundColor: '#FFFFFF', useCORS: true, allowTaint: true, logging: false});
+    
+    el.style.left = '-9999px';
+    el.style.zIndex = '';
+    
     const imgData = canvas.toDataURL('image/png');
     const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({orientation: canvas.width > canvas.height ? 'l':'p', unit:'px', format:[canvas.width/2, canvas.height/2]});
+    const pdf = new jsPDF({orientation: 'p', unit: 'px', format: [canvas.width/2, canvas.height/2]});
     pdf.addImage(imgData, 'PNG', 0, 0, canvas.width/2, canvas.height/2);
     pdf.save(`疗愈复盘_${todayStr}.pdf`);
     showToast('PDF已保存 📄', 'success');
   } catch(e) {
+    document.getElementById('shareExportCard').style.left = '-9999px';
     showToast('生成失败：' + e.message, 'error');
   }
+}
+
+async function buildExportCard() {
+  // 获取当前图片列表
+  let fishImages = [];
+  try {
+    const dateStr = reviewDate || todayStr;
+    fishImages = await apiFetch(`/api/reviews/${dateStr}/fish-images`);
+  } catch(e) {}
+  
+  const isFishMode = formValues['fish_mode'] && formValues['fish_mode'].includes('🎣');
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 周${WEEKDAYS[now.getDay()]}`;
+  const avatarColor = '{{ current_user.avatar_color }}' || '#FFB5A7';
+  const username = '{{ current_user.username }}';
+
+  let bodyHTML = '';
+  fields.forEach(f => {
+    const val = formValues[f.field_key];
+    if (val === undefined || val === null || val === '') return;
+    if (Array.isArray(val) && val.length === 0) return;
+    if (f.field_key === 'fish_mode') return;
+
+    let valueHTML = '';
+    let borderColor = '#FFB5A7';
+    const icon = FIELD_ICONS[f.field_type] || '📌';
+
+    if (f.field_type === 'rating') {
+      const num = Number(val) || 0;
+      valueHTML = '<div style="display:flex;gap:3px;align-items:center">';
+      for (let i=1; i<=10; i++) valueHTML += `<span style="font-size:1.1rem;opacity:${i<=num?1:0.25}">★</span>`;
+      valueHTML += `<span style="margin-left:8px;font-weight:700;font-size:1rem;color:#F59080">${num}/10</span></div>`;
+      borderColor = '#FFD9A0';
+    } else if (f.field_type === 'mood_picker') {
+      valueHTML = `<div style="font-size:1.15rem;font-weight:600;color:#5C4A3A">${escHtml(val)}</div>`;
+      borderColor = '#F7C5D0';
+    } else if (f.field_type === 'single_choice') {
+      valueHTML = `<span style="display:inline-block;padding:4px 12px;background:#FFF0ED;color:#F59080;border-radius:20px;font-size:.82rem;font-weight:500">${escHtml(val)}</span>`;
+      borderColor = '#B7E1CD';
+    } else if (f.field_type === 'multi_choice' && Array.isArray(val)) {
+      valueHTML = val.map(v => `<span style="display:inline-block;padding:4px 12px;background:#FFF0ED;color:#F59080;border-radius:20px;font-size:.82rem;font-weight:500;margin-right:6px;margin-bottom:4px">${escHtml(v)}</span>`).join('');
+    } else if (f.field_type === 'textarea') {
+      valueHTML = `<div style="font-size:.92rem;color:#5C4A3A;line-height:1.8;white-space:pre-wrap">${escHtml(String(val))}</div>`;
+      borderColor = '#C3B1E1';
+    } else {
+      valueHTML = `<div style="font-size:.92rem;color:#5C4A3A">${escHtml(Array.isArray(val)?val.join('、'):String(val))}</div>`;
+    }
+
+    bodyHTML += `
+      <div style="margin-bottom:18px;padding:14px 16px;background:#FEFCFA;border-radius:12px;border-left:3px solid ${borderColor}">
+        <div style="font-size:.72rem;font-weight:700;color:#9B8579;margin-bottom:7px;letter-spacing:.05em">${icon} ${escHtml(f.label)}</div>
+        ${valueHTML}
+      </div>`;
+  });
+
+  // 摸鱼图片
+  if (isFishMode && fishImages.length) {
+    bodyHTML += `
+      <div style="margin-bottom:18px;padding:14px 16px;background:#F5FAFD;border-radius:12px;border-left:3px solid #A8D8EA">
+        <div style="font-size:.72rem;font-weight:700;color:#9B8579;margin-bottom:10px;letter-spacing:.05em">🎣 摸鱼晒图</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">`;
+    fishImages.forEach(img => {
+      bodyHTML += `<div style="border-radius:8px;overflow:hidden;border:1px solid #F0E6DF;max-width:170px;background:white">
+        <img src="/api/fish-images/${img.filename}" style="width:100%;display:block" crossorigin="anonymous">
+        ${img.caption ? `<div style="padding:6px 10px;font-size:.7rem;color:#9B8579">${escHtml(img.caption)}</div>` : ''}
+      </div>`;
+    });
+    bodyHTML += `</div></div>`;
+  }
+
+  if (!bodyHTML) {
+    bodyHTML = '<div style="text-align:center;padding:40px 0;color:#9B8579;font-size:.9rem">📭 今天还没有记录内容</div>';
+  }
+
+  document.getElementById('shareExportCard').innerHTML = `
+    <div style="padding:32px 28px 24px;text-align:center;background:linear-gradient(135deg,#FFF0ED,#F0EBFA);border-bottom:1px solid #F0E6DF">
+      <div style="width:54px;height:54px;border-radius:50%;background:${avatarColor};display:inline-flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:700;color:white;margin-bottom:10px">${username[0].toUpperCase()}</div>
+      <div style="font-size:1.1rem;font-weight:700;color:#5C4A3A">${escHtml(username)} 的疗愈日记</div>
+      <div style="font-size:.82rem;color:#9B8579;margin-top:5px">📅 ${dateStr}</div>
+    </div>
+    <div style="padding:24px 28px 12px">${bodyHTML}</div>
+    <div style="background:#FFF9F5;padding:18px 28px;text-align:center;border-top:1px solid #F0E6DF">
+      <div style="font-size:.78rem;color:#9B8579">✍️ 想要记录自己的疗愈日记？来加入我们</div>
+      <div style="font-size:.7rem;color:#C5B5A5;margin-top:5px">🌿 疗愈日记本 · Healing Diary</div>
+    </div>`;
 }
 
 function shareCopyText() {
