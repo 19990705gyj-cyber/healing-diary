@@ -46,7 +46,7 @@ DEFAULT_FIELDS = [
     },
     {
         'field_key': 'fish_mode',
-        'label': '摸鱼环节',
+        'label': '今天摸鱼还是复盘',
         'field_type': 'single_choice',
         'options': ['🎣 今天摸了，上点图看看', '📝 今天没摸，正常复盘'],
         'placeholder': None,

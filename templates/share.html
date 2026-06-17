@@ -273,7 +273,7 @@
 </head>
 <body>
   <div class="header">
-    <span class="logo">🌿</span>
+    <span class="logo">疗愈日记本</span>
     <div class="app-name">疗愈日记本</div>
   </div>
 
@@ -329,51 +329,50 @@ function renderShare(data) {
   // 摸鱼模式先判断
   const isFishMode = content['fish_mode'] && content['fish_mode'].includes('🎣');
 
-  // 非摸鱼模式下渲染所有字段；摸鱼模式下只显示摸鱼图片
-  if (!isFishMode) {
-    fields.forEach(f => {
-      const val = content[f.field_key];
-      if (val === undefined || val === null || val === '') return;
-      // 跳过多选空数组
-      if (Array.isArray(val) && val.length === 0) return;
-      // 摸鱼环节的文字选项不显示在字段中（用图片区域替代）
-      if (f.field_key === 'fish_mode') return;
+  // 摸鱼模式下：只显示心情(mood_picker)和能量(rating) + 摸鱼图片；非摸鱼模式显示全部字段
+  const renderFields = isFishMode
+    ? fields.filter(f => f.field_type === 'mood_picker' || f.field_type === 'rating')
+    : fields.filter(f => f.field_key !== 'fish_mode');
 
-      hasContent = true;
-      let valueHTML = '';
-      let extraClass = '';
+  renderFields.forEach(f => {
+    const val = content[f.field_key];
+    if (val === undefined || val === null || val === '') return;
+    if (Array.isArray(val) && val.length === 0) return;
 
-      if (f.field_type === 'rating') {
-        const num = Number(val) || 0;
-        let stars = '<div class="rating-display">';
-        for (let i=1; i<=10; i++) {
-          stars += `<span class="star ${i<=num?'filled':''}">★</span>`;
-        }
-        stars += `<span class="rating-score">${num}/10</span></div>`;
-        valueHTML = stars;
-        extraClass = ' type-rating';
-      } else if (f.field_type === 'mood_picker') {
-        valueHTML = `<div class="field-value mood-display">${escHtml(val)}</div>`;
-        extraClass = ' type-mood_picker';
-      } else if (f.field_type === 'single_choice') {
-        valueHTML = `<div class="choice-tags"><span class="choice-tag">${escHtml(val)}</span></div>`;
-        extraClass = ' type-single_choice';
-      } else if (f.field_type === 'multi_choice' && Array.isArray(val)) {
-        valueHTML = '<div class="choice-tags">' + val.map(v => `<span class="choice-tag">${escHtml(v)}</span>`).join('') + '</div>';
-      } else if (f.field_type === 'textarea') {
-        valueHTML = `<div class="field-value">${escHtml(String(val))}</div>`;
-        extraClass = ' type-textarea';
-      } else {
-        valueHTML = `<div class="field-value">${escHtml(Array.isArray(val) ? val.join('、') : String(val))}</div>`;
+    hasContent = true;
+    let valueHTML = '';
+    let extraClass = '';
+
+    if (f.field_type === 'rating') {
+      const num = Number(val) || 0;
+      let stars = '<div class="rating-display">';
+      for (let i=1; i<=10; i++) {
+        stars += `<span class="star ${i<=num?'filled':''}">★</span>`;
       }
+      stars += `<span class="rating-score">${num}/10</span></div>`;
+      valueHTML = stars;
+      extraClass = ' type-rating';
+    } else if (f.field_type === 'mood_picker') {
+      valueHTML = `<div class="field-value mood-display">${escHtml(val)}</div>`;
+      extraClass = ' type-mood_picker';
+    } else if (f.field_type === 'single_choice') {
+      valueHTML = `<div class="choice-tags"><span class="choice-tag">${escHtml(val)}</span></div>`;
+      extraClass = ' type-single_choice';
+    } else if (f.field_type === 'multi_choice' && Array.isArray(val)) {
+      valueHTML = '<div class="choice-tags">' + val.map(v => `<span class="choice-tag">${escHtml(v)}</span>`).join('') + '</div>';
+    } else if (f.field_type === 'textarea') {
+      valueHTML = `<div class="field-value">${escHtml(String(val))}</div>`;
+      extraClass = ' type-textarea';
+    } else {
+      valueHTML = `<div class="field-value">${escHtml(Array.isArray(val) ? val.join('、') : String(val))}</div>`;
+    }
 
-      fieldsHTML += `
-        <div class="field-block${extraClass}">
-          <div class="field-label">${FIELD_ICONS[f.field_type] || '📌'} ${escHtml(f.label)}</div>
-          ${valueHTML}
-        </div>`;
-    });
-  }
+    fieldsHTML += `
+      <div class="field-block${extraClass}">
+        <div class="field-label">${FIELD_ICONS[f.field_type] || '📌'} ${escHtml(f.label)}</div>
+        ${valueHTML}
+      </div>`;
+  });
 
   // 摸鱼图片
   if (isFishMode && fish_images && fish_images.length) {
@@ -430,47 +429,48 @@ function buildExportCard(data, username, avatarColor, dateStr, fields, fish_imag
     </div>
     <div style="padding:28px 32px 12px">`;
 
-  // 非摸鱼模式下渲染所有字段；摸鱼模式下只显示摸鱼图片
-  if (!isFishMode) {
-    fields.forEach(f => {
-      const val = content[f.field_key];
-      if (val === undefined || val === null || val === '') return;
-      if (Array.isArray(val) && val.length === 0) return;
-      if (f.field_key === 'fish_mode') return;
+  // 摸鱼模式下：只显示心情(mood_picker)和能量(rating) + 摸鱼图片；非摸鱼模式显示全部字段
+  const renderFields = isFishMode
+    ? fields.filter(f => f.field_type === 'mood_picker' || f.field_type === 'rating')
+    : fields.filter(f => f.field_key !== 'fish_mode');
 
-      let valueHTML = '';
-      let borderColor = '#FFB5A7';
+  renderFields.forEach(f => {
+    const val = content[f.field_key];
+    if (val === undefined || val === null || val === '') return;
+    if (Array.isArray(val) && val.length === 0) return;
 
-      if (f.field_type === 'rating') {
-        const num = Number(val) || 0;
-        valueHTML = '<div style="display:flex;gap:4px;align-items:center">';
-        for (let i=1; i<=10; i++) {
-          valueHTML += `<span style="font-size:1.2rem;opacity:${i<=num?1:0.25}">★</span>`;
-        }
-        valueHTML += `<span style="margin-left:8px;font-weight:700;font-size:1.1rem;color:#F59080">${num}/10</span></div>`;
-        borderColor = '#FFD9A0';
-      } else if (f.field_type === 'mood_picker') {
-        valueHTML = `<div style="font-size:1.2rem;font-weight:600;color:#5C4A3A">${escHtml(val)}</div>`;
-        borderColor = '#F7C5D0';
-      } else if (f.field_type === 'single_choice') {
-        valueHTML = `<span style="display:inline-block;padding:4px 12px;background:#FFF0ED;color:#F59080;border-radius:20px;font-size:.85rem;font-weight:500">${escHtml(val)}</span>`;
-        borderColor = '#B7E1CD';
-      } else if (f.field_type === 'multi_choice' && Array.isArray(val)) {
-        valueHTML = val.map(v => `<span style="display:inline-block;padding:4px 12px;background:#FFF0ED;color:#F59080;border-radius:20px;font-size:.85rem;font-weight:500;margin-right:6px;margin-bottom:4px">${escHtml(v)}</span>`).join('');
-      } else if (f.field_type === 'textarea') {
-        valueHTML = `<div style="font-size:.95rem;color:#5C4A3A;line-height:1.8;white-space:pre-wrap">${escHtml(String(val))}</div>`;
-        borderColor = '#C3B1E1';
-      } else {
-        valueHTML = `<div style="font-size:.95rem;color:#5C4A3A">${escHtml(Array.isArray(val)?val.join('、'):String(val))}</div>`;
+    let valueHTML = '';
+    let borderColor = '#FFB5A7';
+
+    if (f.field_type === 'rating') {
+      const num = Number(val) || 0;
+      valueHTML = '<div style="display:flex;gap:4px;align-items:center">';
+      for (let i=1; i<=10; i++) {
+        valueHTML += `<span style="font-size:1.2rem;opacity:${i<=num?1:0.25}">★</span>`;
       }
+      valueHTML += `<span style="margin-left:8px;font-weight:700;font-size:1.1rem;color:#F59080">${num}/10</span></div>`;
+      borderColor = '#FFD9A0';
+    } else if (f.field_type === 'mood_picker') {
+      valueHTML = `<div style="font-size:1.2rem;font-weight:600;color:#5C4A3A">${escHtml(val)}</div>`;
+      borderColor = '#F7C5D0';
+    } else if (f.field_type === 'single_choice') {
+      valueHTML = `<span style="display:inline-block;padding:4px 12px;background:#FFF0ED;color:#F59080;border-radius:20px;font-size:.85rem;font-weight:500">${escHtml(val)}</span>`;
+      borderColor = '#B7E1CD';
+    } else if (f.field_type === 'multi_choice' && Array.isArray(val)) {
+      valueHTML = val.map(v => `<span style="display:inline-block;padding:4px 12px;background:#FFF0ED;color:#F59080;border-radius:20px;font-size:.85rem;font-weight:500;margin-right:6px;margin-bottom:4px">${escHtml(v)}</span>`).join('');
+    } else if (f.field_type === 'textarea') {
+      valueHTML = `<div style="font-size:.95rem;color:#5C4A3A;line-height:1.8;white-space:pre-wrap">${escHtml(String(val))}</div>`;
+      borderColor = '#C3B1E1';
+    } else {
+      valueHTML = `<div style="font-size:.95rem;color:#5C4A3A">${escHtml(Array.isArray(val)?val.join('、'):String(val))}</div>`;
+    }
 
-      exportHTML += `
-        <div style="margin-bottom:20px;padding:14px 16px;background:#FEFCFA;border-radius:12px;border-left:3px solid ${borderColor}">
-          <div style="font-size:.75rem;font-weight:700;color:#9B8579;margin-bottom:8px;letter-spacing:.05em">${FIELD_ICONS[f.field_type]||'📌'} ${escHtml(f.label)}</div>
-          ${valueHTML}
-        </div>`;
-    });
-  }
+    exportHTML += `
+      <div style="margin-bottom:20px;padding:14px 16px;background:#FEFCFA;border-radius:12px;border-left:3px solid ${borderColor}">
+        <div style="font-size:.75rem;font-weight:700;color:#9B8579;margin-bottom:8px;letter-spacing:.05em">${FIELD_ICONS[f.field_type]||'📌'} ${escHtml(f.label)}</div>
+        ${valueHTML}
+      </div>`;
+  });
 
   // 摸鱼图片
   if (isFishMode && fish_images && fish_images.length) {

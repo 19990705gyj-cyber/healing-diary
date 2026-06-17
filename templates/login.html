@@ -190,20 +190,14 @@
 <body>
 <div class="page-wrap">
   <div class="logo-area">
-    <span class="logo-icon">🌿</span>
     <div class="logo-title">疗愈日记本</div>
     <div class="logo-sub">每日复盘，与自己温柔相遇</div>
   </div>
 
   <div class="card">
-    <div class="tabs">
-      <button class="tab-btn active" id="tabLogin" onclick="switchTab('login')">登录</button>
-      <button class="tab-btn" id="tabRegister" onclick="switchTab('register')">注册</button>
-    </div>
-
     <div id="errorMsg" class="error-msg"></div>
 
-    <!-- 登录表单（默认显示） -->
+    <!-- 登录表单 -->
     <div id="loginForm">
       <div class="form-group">
         <label>用户名</label>
@@ -257,8 +251,6 @@ function switchTab(tab) {
   const isLogin = tab === 'login';
   document.getElementById('loginForm').style.display = isLogin ? 'block' : 'none';
   document.getElementById('registerForm').style.display = isLogin ? 'none' : 'block';
-  document.getElementById('tabLogin').classList.toggle('active', isLogin);
-  document.getElementById('tabRegister').classList.toggle('active', !isLogin);
   document.getElementById('errorMsg').style.display = 'none';
   // 切换底部提示文字
   const hint = document.getElementById('footerHint');

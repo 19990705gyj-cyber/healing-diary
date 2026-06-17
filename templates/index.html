@@ -740,7 +740,7 @@ async function saveReview() {
     try {
       const images = await apiFetch('/api/reviews/today/fish-images');
       if (images.length === 0) {
-        showToast('摸鱼环节请至少上传一张图片 📸', 'error');
+        showToast('今天摸鱼请至少上传一张图片 📸', 'error');
         return;
       }
     } catch(e) {
@@ -881,8 +881,34 @@ async function buildExportCard() {
   const username = '{{ current_user.username }}';
 
   let bodyHTML = '';
-  // 摸鱼模式下：只显示摸鱼图片，不渲染其他文字字段
-  if (!isFishMode) {
+  // 摸鱼模式下：只显示心情(mood_picker)、能量(rating) + 摸鱼图片；非摸鱼模式显示全部字段
+  if (isFishMode) {
+    // 只渲染 mood_picker 和 rating 类型字段
+    const fishFields = fields.filter(f => f.field_type === 'mood_picker' || f.field_type === 'rating');
+    fishFields.forEach(f => {
+      const val = formValues[f.field_key];
+      if (val === undefined || val === null || val === '') return;
+      let valueHTML = '';
+      let borderColor = '#FFB5A7';
+      const icon = FIELD_ICONS[f.field_type] || '📌';
+
+      if (f.field_type === 'rating') {
+        const num = Number(val) || 0;
+        valueHTML = '<div style="display:flex;gap:3px;align-items:center">';
+        for (let i=1; i<=10; i++) valueHTML += `<span style="font-size:1.1rem;opacity:${i<=num?1:0.25}">★</span>`;
+        valueHTML += `<span style="margin-left:8px;font-weight:700;font-size:1rem;color:#F59080">${num}/10</span></div>`;
+        borderColor = '#FFD9A0';
+      } else if (f.field_type === 'mood_picker') {
+        valueHTML = `<div style="font-size:1.15rem;font-weight:600;color:#5C4A3A">${escHtml(val)}</div>`;
+        borderColor = '#F7C5D0';
+      }
+      bodyHTML += `
+        <div style="margin-bottom:18px;padding:14px 16px;background:#FEFCFA;border-radius:12px;border-left:3px solid ${borderColor}">
+          <div style="font-size:.72rem;font-weight:700;color:#9B8579;margin-bottom:7px;letter-spacing:.05em">${icon} ${escHtml(f.label)}</div>
+          ${valueHTML}
+        </div>`;
+    });
+  } else {
     fields.forEach(f => {
       const val = formValues[f.field_key];
       if (val === undefined || val === null || val === '') return;
