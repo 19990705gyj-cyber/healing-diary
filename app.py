@@ -43,13 +43,22 @@ DEFAULT_FIELDS = [
         'sort_order': 2,
     },
     {
+        'field_key': 'fish_mode',
+        'label': '摸鱼环节',
+        'field_type': 'single_choice',
+        'options': ['🎣 今天摸了，上点图看看', '📝 今天没摸，正常复盘'],
+        'placeholder': None,
+        'is_required': False,
+        'sort_order': 3,
+    },
+    {
         'field_key': 'today_gratitude',
         'label': '今日感恩',
         'field_type': 'textarea',
         'options': [],
         'placeholder': '今天有哪些值得感恩的小事？（可以是一件小事、一个微笑、一杯好茶）',
         'is_required': False,
-        'sort_order': 3,
+        'sort_order': 4,
     },
     {
         'field_key': 'today_insight',
@@ -58,7 +67,7 @@ DEFAULT_FIELDS = [
         'options': [],
         'placeholder': '今天有什么新的领悟或成长？',
         'is_required': False,
-        'sort_order': 4,
+        'sort_order': 5,
     },
     {
         'field_key': 'difficulty_faced',
@@ -67,7 +76,7 @@ DEFAULT_FIELDS = [
         'options': [],
         'placeholder': '今天遇到了什么挑战？你是怎么面对的？',
         'is_required': False,
-        'sort_order': 5,
+        'sort_order': 6,
     },
     {
         'field_key': 'tomorrow_intention',
@@ -75,15 +84,6 @@ DEFAULT_FIELDS = [
         'field_type': 'text',
         'options': [],
         'placeholder': '明天我想要……',
-        'is_required': False,
-        'sort_order': 6,
-    },
-    {
-        'field_key': 'fish_mode',
-        'label': '摸鱼环节',
-        'field_type': 'single_choice',
-        'options': ['🎣 今天摸了，上点图看看', '📝 今天没摸，正常复盘'],
-        'placeholder': None,
         'is_required': False,
         'sort_order': 7,
     },
@@ -185,17 +185,16 @@ def admin_fields():
 def api_register():
     data = request.get_json()
     username = data.get('username', '').strip()
-    email = data.get('email', '').strip()
     password = data.get('password', '')
+    # 邮箱不再必填，用用户名生成唯一标识
+    email = f"{username}@healing.diary" if username else ''
 
-    if not username or not email or not password:
-        return jsonify({'error': '请填写完整信息'}), 400
+    if not username or not password:
+        return jsonify({'error': '请填写用户名和密码'}), 400
     if len(password) < 6:
         return jsonify({'error': '密码不能少于6位'}), 400
     if User.query.filter_by(username=username).first():
         return jsonify({'error': '用户名已存在'}), 400
-    if User.query.filter_by(email=email).first():
-        return jsonify({'error': '邮箱已注册'}), 400
 
     colors = ['#FFB5A7', '#B7E1CD', '#C3B1E1', '#FFD9A0', '#A8D8EA', '#F7C5D0']
     color = colors[User.query.count() % len(colors)]
@@ -215,9 +214,7 @@ def api_login():
     password = data.get('password', '')
     remember = data.get('remember', False)
 
-    user = User.query.filter(
-        (User.username == username) | (User.email == username)
-    ).first()
+    user = User.query.filter_by(username=username).first()
 
     if not user or not user.check_password(password):
         return jsonify({'error': '用户名或密码错误'}), 401
@@ -618,8 +615,12 @@ with app.app_context():
 def api_upload_fish_images():
     today = date.today()
     review = Review.query.filter_by(user_id=current_user.id, review_date=today).first()
+    # 如果还没有复盘记录，先创建一个空的
     if not review:
-        return jsonify({'error': '请先保存复盘记录'}), 400
+        review = Review(user_id=current_user.id, review_date=today)
+        review.set_content({})
+        db.session.add(review)
+        db.session.flush()
 
     caption = request.form.get('caption', '').strip()
 

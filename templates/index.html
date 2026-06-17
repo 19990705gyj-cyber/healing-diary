@@ -358,8 +358,11 @@ function renderForm() {
   formValues = {...existingContent};
 
   let html = '';
-  fields.forEach(f => {
-    html += `<div class="field-card" id="field-card-${f.field_key}">`;
+  let fishModeIndex = -1;
+  fields.forEach((f, idx) => {
+    if (f.field_key === 'fish_mode') fishModeIndex = idx;
+    const extraClass = (fishModeIndex >= 0 && idx > fishModeIndex) ? ' hidden-by-fish' : '';
+    html += `<div class="field-card${extraClass}" id="field-card-${f.field_key}">`;
     html += `<div class="field-label">`;
     html += getFieldIcon(f.field_type) + ' ' + escHtml(f.label);
     if (f.is_required) html += ` <span class="req">必填</span>`;

@@ -185,8 +185,8 @@
     <!-- 登录表单 -->
     <div id="loginForm">
       <div class="form-group">
-        <label>用户名 / 邮箱</label>
-        <input type="text" id="loginUsername" placeholder="请输入用户名或邮箱">
+        <label>用户名</label>
+        <input type="text" id="loginUsername" placeholder="请输入用户名">
       </div>
       <div class="form-group">
         <label>密码</label>
@@ -194,7 +194,6 @@
                onkeydown="if(event.key==='Enter')doLogin()">
       </div>
       <button class="btn-submit" id="loginBtn" onclick="doLogin()">进入我的日记本 🌸</button>
-      <div class="footer-hint">默认管理员：admin / admin123</div>
     </div>
 
     <!-- 注册表单 -->
@@ -204,10 +203,6 @@
         <input type="text" id="regUsername" placeholder="给自己取一个名字">
       </div>
       <div class="form-group">
-        <label>邮箱</label>
-        <input type="email" id="regEmail" placeholder="your@email.com">
-      </div>
-      <div class="form-group">
         <label>密码 <span style="font-weight:400;color:var(--text-secondary)">（至少6位）</span></label>
         <input type="password" id="regPassword" placeholder="设置登录密码">
       </div>
@@ -215,6 +210,9 @@
         <label>确认密码</label>
         <input type="password" id="regPasswordConfirm" placeholder="再输入一次密码"
                onkeydown="if(event.key==='Enter')doRegister()">
+      </div>
+      <div style="background:#FFF9E6;border:1px solid #FFE8A0;border-radius:10px;padding:10px 14px;font-size:.82rem;color:#8B7300;margin-bottom:14px;line-height:1.5">
+        ⚠️ 请务必记住你的密码，本站暂不提供密码找回功能。
       </div>
       <button class="btn-submit" id="registerBtn" onclick="doRegister()">开始我的疗愈之旅 🌱</button>
     </div>
@@ -268,11 +266,10 @@ async function doLogin() {
 
 async function doRegister() {
   const username = document.getElementById('regUsername').value.trim();
-  const email = document.getElementById('regEmail').value.trim();
   const password = document.getElementById('regPassword').value;
   const confirm = document.getElementById('regPasswordConfirm').value;
   
-  if (!username || !email || !password) return showError('请填写完整信息');
+  if (!username || !password) return showError('请填写用户名和密码');
   if (password !== confirm) return showError('两次密码不一致');
   if (password.length < 6) return showError('密码不能少于6位');
   
@@ -283,7 +280,7 @@ async function doRegister() {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({username, email, password})
+      body: JSON.stringify({username, password})
     });
     const data = await res.json();
     if (!res.ok) { showError(data.error || '注册失败'); return; }
