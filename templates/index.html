@@ -592,11 +592,18 @@ async function handleFishFiles(files) {
     formData.append('image', file);
     formData.append('caption', caption);
     try {
-      await fetch('/api/reviews/today/fish-images', { method: 'POST', body: formData });
+      const res = await fetch('/api/reviews/today/fish-images', { method: 'POST', body: formData });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || '上传失败', 'error');
+      }
     } catch(e) {
       showToast('上传失败: ' + e.message, 'error');
     }
   }
+  // 清空 file input，允许重复选择同一文件
+  const fileInput = document.getElementById('fishFileInput');
+  if (fileInput) fileInput.value = '';
   loadFishImages();
 }
 
