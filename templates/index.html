@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% block title %}今日复盘 · 疗愈日记本{% endblock %}
-{% block page_title %}✍️ 今日复盘{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -882,43 +881,46 @@ async function buildExportCard() {
   const username = '{{ current_user.username }}';
 
   let bodyHTML = '';
-  fields.forEach(f => {
-    const val = formValues[f.field_key];
-    if (val === undefined || val === null || val === '') return;
-    if (Array.isArray(val) && val.length === 0) return;
-    if (f.field_key === 'fish_mode') return;
+  // 摸鱼模式下：只显示摸鱼图片，不渲染其他文字字段
+  if (!isFishMode) {
+    fields.forEach(f => {
+      const val = formValues[f.field_key];
+      if (val === undefined || val === null || val === '') return;
+      if (Array.isArray(val) && val.length === 0) return;
+      if (f.field_key === 'fish_mode') return;
 
-    let valueHTML = '';
-    let borderColor = '#FFB5A7';
-    const icon = FIELD_ICONS[f.field_type] || '📌';
+      let valueHTML = '';
+      let borderColor = '#FFB5A7';
+      const icon = FIELD_ICONS[f.field_type] || '📌';
 
-    if (f.field_type === 'rating') {
-      const num = Number(val) || 0;
-      valueHTML = '<div style="display:flex;gap:3px;align-items:center">';
-      for (let i=1; i<=10; i++) valueHTML += `<span style="font-size:1.1rem;opacity:${i<=num?1:0.25}">★</span>`;
-      valueHTML += `<span style="margin-left:8px;font-weight:700;font-size:1rem;color:#F59080">${num}/10</span></div>`;
-      borderColor = '#FFD9A0';
-    } else if (f.field_type === 'mood_picker') {
-      valueHTML = `<div style="font-size:1.15rem;font-weight:600;color:#5C4A3A">${escHtml(val)}</div>`;
-      borderColor = '#F7C5D0';
-    } else if (f.field_type === 'single_choice') {
-      valueHTML = `<span style="display:inline-block;padding:4px 12px;background:#FFF0ED;color:#F59080;border-radius:20px;font-size:.82rem;font-weight:500">${escHtml(val)}</span>`;
-      borderColor = '#B7E1CD';
-    } else if (f.field_type === 'multi_choice' && Array.isArray(val)) {
-      valueHTML = val.map(v => `<span style="display:inline-block;padding:4px 12px;background:#FFF0ED;color:#F59080;border-radius:20px;font-size:.82rem;font-weight:500;margin-right:6px;margin-bottom:4px">${escHtml(v)}</span>`).join('');
-    } else if (f.field_type === 'textarea') {
-      valueHTML = `<div style="font-size:.92rem;color:#5C4A3A;line-height:1.8;white-space:pre-wrap">${escHtml(String(val))}</div>`;
-      borderColor = '#C3B1E1';
-    } else {
-      valueHTML = `<div style="font-size:.92rem;color:#5C4A3A">${escHtml(Array.isArray(val)?val.join('、'):String(val))}</div>`;
-    }
+      if (f.field_type === 'rating') {
+        const num = Number(val) || 0;
+        valueHTML = '<div style="display:flex;gap:3px;align-items:center">';
+        for (let i=1; i<=10; i++) valueHTML += `<span style="font-size:1.1rem;opacity:${i<=num?1:0.25}">★</span>`;
+        valueHTML += `<span style="margin-left:8px;font-weight:700;font-size:1rem;color:#F59080">${num}/10</span></div>`;
+        borderColor = '#FFD9A0';
+      } else if (f.field_type === 'mood_picker') {
+        valueHTML = `<div style="font-size:1.15rem;font-weight:600;color:#5C4A3A">${escHtml(val)}</div>`;
+        borderColor = '#F7C5D0';
+      } else if (f.field_type === 'single_choice') {
+        valueHTML = `<span style="display:inline-block;padding:4px 12px;background:#FFF0ED;color:#F59080;border-radius:20px;font-size:.82rem;font-weight:500">${escHtml(val)}</span>`;
+        borderColor = '#B7E1CD';
+      } else if (f.field_type === 'multi_choice' && Array.isArray(val)) {
+        valueHTML = val.map(v => `<span style="display:inline-block;padding:4px 12px;background:#FFF0ED;color:#F59080;border-radius:20px;font-size:.82rem;font-weight:500;margin-right:6px;margin-bottom:4px">${escHtml(v)}</span>`).join('');
+      } else if (f.field_type === 'textarea') {
+        valueHTML = `<div style="font-size:.92rem;color:#5C4A3A;line-height:1.8;white-space:pre-wrap">${escHtml(String(val))}</div>`;
+        borderColor = '#C3B1E1';
+      } else {
+        valueHTML = `<div style="font-size:.92rem;color:#5C4A3A">${escHtml(Array.isArray(val)?val.join('、'):String(val))}</div>`;
+      }
 
-    bodyHTML += `
-      <div style="margin-bottom:18px;padding:14px 16px;background:#FEFCFA;border-radius:12px;border-left:3px solid ${borderColor}">
-        <div style="font-size:.72rem;font-weight:700;color:#9B8579;margin-bottom:7px;letter-spacing:.05em">${icon} ${escHtml(f.label)}</div>
-        ${valueHTML}
-      </div>`;
-  });
+      bodyHTML += `
+        <div style="margin-bottom:18px;padding:14px 16px;background:#FEFCFA;border-radius:12px;border-left:3px solid ${borderColor}">
+          <div style="font-size:.72rem;font-weight:700;color:#9B8579;margin-bottom:7px;letter-spacing:.05em">${icon} ${escHtml(f.label)}</div>
+          ${valueHTML}
+        </div>`;
+    });
+  }
 
   // 摸鱼图片
   if (isFishMode && fishImages.length) {

@@ -52,38 +52,31 @@
       align-items: center;
       gap: 8px;
     }
-    .navbar-brand .logo { font-size: 1.4rem; }
-    .navbar-page-title {
-      font-size: 0.92rem;
-      font-weight: 600;
-      color: var(--text-primary);
-      padding: 6px 16px;
-      background: rgba(255,181,167,0.12);
-      border-radius: 20px;
-      letter-spacing: 0.02em;
-    }
+    .navbar-brand .logo { font-size: 1.3rem; }
     .nav-links {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 2px;
     }
     .nav-link {
       padding: 7px 14px;
       border-radius: var(--radius-sm);
       text-decoration: none;
       color: var(--text-secondary);
-      font-size: 0.9rem;
+      font-size: 0.88rem;
+      font-weight: 500;
       transition: all 0.2s;
     }
     .nav-link:hover, .nav-link.active {
       background: var(--primary);
       color: white;
+      font-weight: 600;
     }
     .nav-avatar {
-      width: 36px; height: 36px;
+      width: 34px; height: 34px;
       border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      font-weight: 700; color: white; font-size: 0.9rem;
+      font-weight: 700; color: white; font-size: 0.85rem;
       cursor: pointer;
       position: relative;
     }
@@ -362,8 +355,9 @@
     /* ── 响应式 ── */
     @media (max-width: 600px) {
       .container, .container-wide { padding: 20px 16px; }
-      .navbar { padding: 0 16px; }
-      .nav-links .nav-link span { display: none; }
+      .navbar { padding: 0 12px; height: 56px; }
+      .navbar-brand span:last-child { display: none; }
+      .nav-link { padding: 6px 10px; font-size: 0.82rem; }
       .card { padding: 20px; }
     }
   </style>
@@ -377,9 +371,6 @@
     <span class="logo">🌿</span>
     <span>疗愈日记本</span>
   </a>
-  <div class="navbar-page-title" id="navbarPageTitle">
-    {% block page_title %}今日复盘{% endblock %}
-  </div>
   <div class="nav-links">
     <a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">
       <span>✍️ 今日复盘</span>

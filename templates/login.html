@@ -23,6 +23,7 @@
       background: var(--bg-warm);
       min-height: 100vh;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 20px;
@@ -80,6 +81,9 @@
       border-radius: 7px;
       transition: all 0.2s;
       color: var(--text-secondary);
+      border: none;
+      background: none;
+      font-family: inherit;
     }
     .tab-btn.active {
       background: white;
@@ -124,6 +128,7 @@
       cursor: pointer;
       transition: all 0.2s;
       margin-top: 8px;
+      font-family: inherit;
     }
     .btn-submit:hover {
       background: var(--primary-dark);
@@ -142,12 +147,28 @@
       margin-bottom: 16px;
       display: none;
     }
-    .footer-hint {
+    /* 底部引导 + 联系方式 */
+    .footer-area {
       text-align: center;
-      margin-top: 20px;
-      font-size: 0.8rem;
+      margin-top: 24px;
+      font-size: 0.82rem;
       color: var(--text-secondary);
+      line-height: 1.8;
     }
+    .footer-area .switch-link {
+      color: var(--primary-dark);
+      cursor: pointer;
+      font-weight: 600;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .footer-area .switch-link:hover { color: #D4705F; }
+    .contact-hint {
+      margin-top: 8px;
+      font-size: 0.76rem;
+      color: #B5A595;
+    }
+    .contact-hint strong { color: #9B8579; }
     .toast {
       position: fixed;
       bottom: 24px; right: 24px;
@@ -176,13 +197,13 @@
 
   <div class="card">
     <div class="tabs">
-      <div class="tab-btn active" onclick="switchTab('login')">登录</div>
-      <div class="tab-btn" onclick="switchTab('register')">注册</div>
+      <button class="tab-btn active" id="tabLogin" onclick="switchTab('login')">登录</button>
+      <button class="tab-btn" id="tabRegister" onclick="switchTab('register')">注册</button>
     </div>
 
     <div id="errorMsg" class="error-msg"></div>
 
-    <!-- 登录表单 -->
+    <!-- 登录表单（默认显示） -->
     <div id="loginForm">
       <div class="form-group">
         <label>用户名</label>
@@ -196,7 +217,7 @@
       <button class="btn-submit" id="loginBtn" onclick="doLogin()">进入我的日记本 🌸</button>
     </div>
 
-    <!-- 注册表单 -->
+    <!-- 注册表单（默认隐藏） -->
     <div id="registerForm" style="display:none">
       <div class="form-group">
         <label>用户名</label>
@@ -218,6 +239,12 @@
       <button class="btn-submit" id="registerBtn" onclick="doRegister()">开始我的疗愈之旅 🌱</button>
     </div>
   </div>
+
+  <!-- 底部：注册引导 + 联系方式 -->
+  <div class="footer-area" id="footerHint">
+    <span>若未注册请<span class="switch-link" onclick="switchTab('register')">点此处进行注册</span></span>
+    <div class="contact-hint">有问题请联系：<strong>LG-2ao</strong></div>
+  </div>
 </div>
 
 <div id="toast" class="toast"></div>
@@ -227,12 +254,19 @@ let currentTab = 'login';
 
 function switchTab(tab) {
   currentTab = tab;
-  document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
-  document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
-  document.querySelectorAll('.tab-btn').forEach((btn, i) => {
-    btn.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register'));
-  });
+  const isLogin = tab === 'login';
+  document.getElementById('loginForm').style.display = isLogin ? 'block' : 'none';
+  document.getElementById('registerForm').style.display = isLogin ? 'none' : 'block';
+  document.getElementById('tabLogin').classList.toggle('active', isLogin);
+  document.getElementById('tabRegister').classList.toggle('active', !isLogin);
   document.getElementById('errorMsg').style.display = 'none';
+  // 切换底部提示文字
+  const hint = document.getElementById('footerHint');
+  if (isLogin) {
+    hint.innerHTML = '<span>若未注册请<span class="switch-link" onclick="switchTab(\'register\')">点此处进行注册</span></span><div class="contact-hint">有问题请联系：<strong>LG-2ao</strong></div>';
+  } else {
+    hint.innerHTML = '<span>已有账号？<span class="switch-link" onclick="switchTab(\'login\')">点此登录</span></span><div class="contact-hint">有问题请联系：<strong>LG-2ao</strong></div>';
+  }
 }
 
 function showError(msg) {
@@ -303,7 +337,6 @@ async function checkUsername() {
     hint.textContent = '用户名至少2个字符';
     return;
   }
-  // 防抖
   clearTimeout(checkTimer);
   checkTimer = setTimeout(async () => {
     try {
